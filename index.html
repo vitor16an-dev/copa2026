@@ -231,7 +231,8 @@
 
   <header>
     <h1>Copa 2026<br>ao vivo</h1>
-    <p class="sub">Fase de grupos — dia, horário (Brasília), <b>onde assistir</b>, <b>resultados em tempo real</b> e <b>tabelas dos grupos</b>. Marque o que já viu!</p>
+    <p class="sub">Fase de grupos — dia, horário, <b>onde assistir</b>, <b>resultados em tempo real</b> e <b>tabelas dos grupos</b>. Marque o que já viu!</p>
+    <p class="credit" id="tzInfo"></p>
     <p class="credit">Transmissões: @datafutebol · Placares: ESPN</p>
     <p class="credit">Desenvolvido por <b style="color:var(--accent2);font-weight:600">Vitor Araújo</b></p>
   </header>
@@ -291,7 +292,7 @@
       <li>Todos os jogos do <b>SBT</b> também serão transmitidos na <b>N SPORTS</b>.</li>
       <li>Todos os jogos da <b>Globo</b> também serão transmitidos no <b>Globoplay</b>.</li>
       <li>A <b>última rodada</b> ainda precisa de definição de transmissão (jogos marcados com "A definir").</li>
-      <li>Horários no fuso de <b>Brasília</b>. A programação pode mudar — confira sempre antes do jogo.</li>
+      <li>Os horários são <b>convertidos automaticamente para o fuso de quem abre a página</b> — datas dos blocos seguem o calendário de Brasília (se no seu fuso o jogo cair no dia seguinte/anterior, aparece a etiqueta <b>+1 dia</b>/<b>-1 dia</b>). A programação pode mudar — confira sempre antes do jogo.</li>
     </ul>
   </div>
 
@@ -437,9 +438,21 @@ function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
 
 let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
 
+// horários da base estão em Brasília (UTC-3, sem horário de verão) -> ancora no instante UTC real
 function matchDate(m){
   const [h,min] = m[1].split(":").map(Number);
-  return new Date(2026, 5, m[0], h, min);
+  return new Date(Date.UTC(2026, 5, m[0], h + 3, min));
+}
+// formata o horário no fuso local de quem abriu a página (ex: "16h00")
+function horaLocal(dt){
+  return dt.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":","h");
+}
+// se no fuso local o jogo cair em outro dia do calendário, sinaliza (+1d / -1d)
+function shiftDia(dt, diaBrasilia){
+  const local = dt.getDate() + (dt.getMonth() === 6 ? 30 : 0); // jul vira dia 31+ p/ comparar
+  const diff = local - diaBrasilia;
+  if (diff === 0) return "";
+  return `<span class="fim-tag">${diff > 0 ? "+1 dia" : "-1 dia"}</span>`;
 }
 function matchId(m){ return m[0] + "_" + m[1] + "_" + m[3] + "_" + m[4]; }
 // remove acentos para busca e matching de nomes
@@ -511,10 +524,11 @@ function jogoHTML(m, agora){
   const id = matchId(m);
   const st = store[id] || {};
   const sj = statusJogo(m, agora);
+  const dt = matchDate(m);
   const ro = (st.state === "in" || st.state === "post") ? "readonly" : "";
   const [ca, na] = T[m[3]], [cb, nb] = T[m[4]];
   return `<div class="jogo ${st.w ? "assistido" : ""} ${sj.vivo ? "aovivo" : ""}" id="${id}">
-    <div class="hora">${m[1].replace(":00","h").replace(":","h")}${sj.tag}</div>
+    <div class="hora">${horaLocal(dt)}${shiftDia(dt, m[0])}${sj.tag}</div>
     <div class="times">
       <div class="linha-time">
         <img src="https://flagcdn.com/w40/${ca}.png" alt="${na}" loading="lazy"><span class="nome">${na}</span>
@@ -678,7 +692,7 @@ function tick(){
   box.querySelector(".lbl").textContent = simult.length > 1 ? "⚽ Próximos jogos" : "⚽ Próximo jogo";
   document.getElementById("nextGame").innerHTML = simult.map(({m}) => {
     const canais = m[5].map(c => CANAL_NOME[c]).join(", ");
-    return `${T[m[3]][1]} × ${T[m[4]][1]} — ${String(m[0]).padStart(2,"0")}/06 às ${m[1].replace(":","h")} (${canais})`;
+    return `${T[m[3]][1]} × ${T[m[4]][1]} — ${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} às ${horaLocal(d)} (${canais})`;
   }).join("<br>");
   const diff = d - agora;
   if (diff <= 0){
@@ -702,7 +716,7 @@ function textoHoje(){
   jogos.forEach(m => {
     const st = store[matchId(m)] || {};
     const placar = (typeof st.a === "number" && typeof st.b === "number") ? ` (${st.a} x ${st.b})` : "";
-    txt += `🕐 ${m[1].replace(":","h")} — ${T[m[3]][1]} × ${T[m[4]][1]}${placar} | ${m[5].map(c=>CANAL_NOME[c]).join(", ")}\n`;
+    txt += `🕐 ${horaLocal(matchDate(m))} — ${T[m[3]][1]} × ${T[m[4]][1]}${placar} | ${m[5].map(c=>CANAL_NOME[c]).join(", ")}\n`;
   });
   txt += "\n📺 Bora assistir!";
   return txt;
@@ -715,6 +729,15 @@ function shareWhats(){
 function copyHoje(){
   navigator.clipboard.writeText(textoHoje()).then(() => alert("Jogos de hoje copiados! 📋"));
 }
+
+// mostra o fuso detectado do visitante
+(function(){
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  const off = -new Date(2026,5,15).getTimezoneOffset()/60;
+  const offTxt = "UTC" + (off >= 0 ? "+" : "") + off;
+  document.getElementById("tzInfo").textContent =
+    `🕐 Horários no seu fuso: ${tz} (${offTxt})` + (off === -3 ? " — igual a Brasília" : "");
+})();
 
 render();
 renderGrupos();
