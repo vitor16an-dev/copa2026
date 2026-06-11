@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copa do Mundo 2026 — Jogos e Grupos ao vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --preto:#000000;
+    --accent:#B388FF;   /* cor principal (era laranja #FFA801) */
+    --accent2:#D0BCFF;  /* cor de apoio clara */
+    --cinza1:#232323; --cinza2:#333333;
+    --r1:#4FC3F7; --r2:#FF5252; --r3:#69F0AE;
+    --ok:#69F0AE; --warn:#FFCA0A;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--preto);
+    color:#fff;
+    font-family:'Poppins', sans-serif;
+    font-weight:300;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+
+  header{padding:36px 0 10px; text-align:left;}
+  h1{
+    font-family:'Neutral Face','Poppins',sans-serif;
+    font-weight:800; text-transform:uppercase;
+    font-size:clamp(26px,6vw,44px); line-height:1.05; letter-spacing:1px;
+    color:var(--accent);
+  }
+  .sub{margin-top:10px; font-size:14px; color:#ddd; font-weight:400;}
+  .sub b{color:var(--accent2); font-weight:600;}
+  .credit{margin-top:4px; font-size:12px; color:#888;}
+
+  /* barra de sincronização */
+  .sync{
+    margin:18px 0 0; background:var(--cinza1); border:1px solid var(--cinza2);
+    border-radius:14px; padding:12px 14px;
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  }
+  .btn{
+    background:var(--accent); color:#000; border:none; border-radius:10px;
+    padding:10px 16px; font-size:13px; font-weight:600; cursor:pointer;
+    font-family:'Poppins',sans-serif; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .btn.sec{background:var(--cinza1); color:var(--accent); border:1px solid var(--accent);}
+  .btn:active{transform:scale(.97);}
+  .btn:disabled{opacity:.5; cursor:wait;}
+  .sync .status{font-size:12px; color:#aaa;}
+  .sync .status.ok{color:var(--ok);}
+  .sync .status.err{color:var(--r2);}
+  .auto{display:flex; align-items:center; gap:6px; font-size:12px; color:#ccc; cursor:pointer; user-select:none;}
+  .auto input{accent-color:var(--accent); width:16px; height:16px; cursor:pointer;}
+
+  /* contagem regressiva */
+  .next{
+    margin:10px 0 6px; background:var(--cinza1); border:1px solid var(--accent);
+    border-radius:14px; padding:14px 16px;
+    display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center;
+  }
+  .next .lbl{
+    font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    font-size:11px; letter-spacing:2px; color:var(--accent);
+  }
+  .next .game{font-size:15px; font-weight:600;}
+  .next .cd{font-size:14px; color:var(--accent2); font-weight:600; font-variant-numeric:tabular-nums;}
+
+  /* abas */
+  .tabs{
+    position:sticky; top:0; z-index:60;
+    background:rgba(0,0,0,.96); backdrop-filter:blur(4px);
+    display:flex; gap:8px; padding:12px 0 0; border-bottom:1px solid var(--cinza2);
+  }
+  .tab{
+    flex:1; background:none; border:none; color:#999; cursor:pointer;
+    font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    letter-spacing:2px; font-size:13px; padding:10px 0 12px;
+    border-bottom:3px solid transparent; transition:.15s;
+  }
+  .tab.on{color:var(--accent); border-bottom-color:var(--accent);}
+
+  /* filtros */
+  .filters{padding:12px 0 10px; border-bottom:1px solid var(--cinza2);}
+  .filters .row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;}
+  .chip{
+    border:1px solid var(--cinza2); background:var(--cinza1); color:#ddd;
+    border-radius:999px; padding:6px 14px; font-size:12px; cursor:pointer;
+    font-family:'Poppins',sans-serif; font-weight:400; transition:.15s;
+    text-transform:uppercase; letter-spacing:.5px;
+  }
+  .chip:hover{border-color:var(--accent);}
+  .chip.on{background:var(--accent); border-color:var(--accent); color:#000; font-weight:600;}
+  .chip.r1.on{background:var(--r1); border-color:var(--r1);}
+  .chip.r2.on{background:var(--r2); border-color:var(--r2);}
+  .chip.r3.on{background:var(--r3); border-color:var(--r3);}
+  #busca{
+    width:100%; background:var(--cinza1); border:1px solid var(--cinza2); color:#fff;
+    border-radius:10px; padding:9px 14px; font-size:14px; font-family:'Poppins',sans-serif;
+    outline:none;
+  }
+  #busca:focus{border-color:var(--accent);}
+  .progress{font-size:12px; color:#aaa; margin-top:8px;}
+  .progress b{color:var(--accent2); font-weight:600;}
+
+  /* dias */
+  .dia{margin-top:26px;}
+  .dia-head{
+    display:flex; align-items:baseline; gap:10px; margin-bottom:10px;
+    border-left:4px solid var(--accent); padding-left:10px;
+  }
+  .dia-head.r1{border-color:var(--r1);} .dia-head.r2{border-color:var(--r2);} .dia-head.r3{border-color:var(--r3);}
+  .dia-head h2{
+    font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    font-size:20px; letter-spacing:1px;
+  }
+  .dia-head .wd{font-size:12px; color:#999; text-transform:uppercase; letter-spacing:1px;}
+  .dia-head .rod{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px;
+    padding:2px 10px; border-radius:999px; color:#000;}
+  .rod.r1{background:var(--r1);} .rod.r2{background:var(--r2);} .rod.r3{background:var(--r3);}
+
+  .jogo{
+    background:var(--cinza1); border:1px solid var(--cinza2); border-radius:12px;
+    padding:12px 14px; margin-bottom:8px;
+    display:grid; grid-template-columns:62px 1fr auto; gap:10px; align-items:center;
+    transition:.15s;
+  }
+  .jogo.assistido{opacity:.45;}
+  .jogo.aovivo{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
+  .hora{
+    font-family:'Neutral Face','Poppins',sans-serif; font-weight:700;
+    color:var(--accent2); font-size:15px;
+  }
+  .live-tag{display:block; font-size:9px; color:var(--accent); letter-spacing:1px; font-weight:700;}
+  .fim-tag{display:block; font-size:9px; color:#888; letter-spacing:1px; font-weight:700;}
+
+  .times{display:flex; flex-direction:column; gap:6px;}
+  .linha-time{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:400;}
+  .linha-time img{width:26px; height:auto; border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,.15);}
+  .nome{min-width:0;}
+  .placar{
+    width:34px; text-align:center; background:#000; border:1px solid var(--cinza2);
+    color:var(--accent2); border-radius:6px; padding:3px 0; font-size:13px;
+    font-family:'Poppins',sans-serif; font-weight:600; margin-left:auto;
+  }
+  .placar:focus{border-color:var(--accent); outline:none;}
+  .placar[readonly]{border-color:var(--accent); color:#fff; background:var(--cinza2);}
+
+  .lado{display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
+  .canais{display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; max-width:170px;}
+  .badge{
+    font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.5px; color:#000;
+  }
+  .b-caze{background:#FFCA0A;}
+  .b-globo{background:#3FA9F5;}
+  .b-sbt{background:#3DDC84;}
+  .b-ge{background:#06AA48; color:#fff;}
+  .b-tbd{background:var(--cinza2); color:#bbb;}
+  .check{
+    background:none; border:1px solid var(--cinza2); color:#888; border-radius:8px;
+    font-size:11px; padding:4px 10px; cursor:pointer; font-family:'Poppins',sans-serif;
+  }
+  .check:hover{border-color:var(--accent); color:var(--accent);}
+  .jogo.assistido .check{border-color:var(--accent); color:var(--accent);}
+
+  /* ===== aba grupos ===== */
+  #abaGrupos{display:none;}
+  .grupos-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));
+    gap:14px; margin-top:20px;
+  }
+  @media (max-width:560px){ .grupos-grid{grid-template-columns:1fr;} }
+  .grupo{
+    background:var(--cinza1); border:1px solid var(--cinza2); border-radius:14px;
+    padding:14px 14px 10px; overflow:hidden;
+  }
+  .grupo h3{
+    font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    letter-spacing:2px; font-size:14px; color:var(--accent); margin-bottom:10px;
+  }
+  .grupo table{width:100%; border-collapse:collapse; font-size:12px;}
+  .grupo th{
+    text-align:center; color:#888; font-weight:600; font-size:10px;
+    text-transform:uppercase; padding:4px 2px; border-bottom:1px solid var(--cinza2);
+  }
+  .grupo th.t{text-align:left;}
+  .grupo td{padding:6px 2px; text-align:center; border-bottom:1px solid #1a1a1a; font-weight:400;}
+  .grupo td.t{
+    text-align:left; display:flex; align-items:center; gap:6px; font-weight:400;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .grupo td.t img{width:20px; border-radius:2px;}
+  .grupo td.pts{font-weight:700; color:var(--accent2);}
+  .grupo tr.q1 td:first-child{box-shadow:inset 3px 0 0 var(--ok);}
+  .grupo tr.q3 td:first-child{box-shadow:inset 3px 0 0 var(--warn);}
+  .legenda{font-size:11px; color:#999; margin-top:14px; line-height:1.7;}
+  .legenda .sq{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px;}
+  .grupos-nota{font-size:12px; color:#aaa; margin-top:16px;}
+  .grupos-nota b{color:var(--accent2);}
+
+  /* rodapé / notas */
+  .notas{
+    margin-top:40px; background:var(--cinza1); border-radius:14px; padding:18px 20px;
+    border-left:4px solid var(--accent);
+  }
+  .notas h3{
+    font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    font-size:13px; letter-spacing:2px; color:var(--accent); margin-bottom:10px;
+  }
+  .notas li{font-size:13px; color:#ccc; margin:6px 0 6px 18px;}
+  .notas b{color:var(--accent2);}
+
+  .acoes{display:flex; gap:10px; flex-wrap:wrap; margin-top:20px;}
+  .vazio{text-align:center; color:#777; padding:40px 0; font-size:14px;}
+  footer{margin-top:40px; text-align:left; font-size:11px; color:#666;}
+  footer b{color:var(--accent);}
+
+  @media (max-width:520px){
+    .jogo{grid-template-columns:54px 1fr;}
+    .lado{grid-column:1 / -1; flex-direction:row; justify-content:space-between; align-items:center;}
+    .canais{justify-content:flex-start;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Copa 2026<br>ao vivo</h1>
+    <p class="sub">Fase de grupos — dia, horário (Brasília), <b>onde assistir</b>, <b>resultados em tempo real</b> e <b>tabelas dos grupos</b>. Marque o que já viu!</p>
+    <p class="credit">Transmissões: @datafutebol · Placares: ESPN</p>
+    <p class="credit">Desenvolvido por <b style="color:var(--accent2);font-weight:600">Vitor Araújo</b></p>
+  </header>
+
+  <div class="sync">
+    <button class="btn" id="btnSync" onclick="atualizar()">🔄 Atualizar resultados</button>
+    <label class="auto"><input type="checkbox" id="autoChk"> Auto (a cada 60s)</label>
+    <span class="status" id="syncStatus">Clique para puxar os placares da internet.</span>
+  </div>
+
+  <div class="next" id="nextBox" style="display:none">
+    <span class="lbl">⚽ Próximo jogo</span>
+    <span class="game" id="nextGame"></span>
+    <span class="cd" id="nextCd"></span>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab on" id="tabJogos" onclick="trocarAba('jogos')">📅 Jogos</button>
+    <button class="tab" id="tabGrupos" onclick="trocarAba('grupos')">🏆 Grupos</button>
+  </nav>
+
+  <section id="abaJogos">
+    <div class="filters">
+      <div class="row" id="rodadaChips">
+        <button class="chip on" data-r="0">Todas</button>
+        <button class="chip r1" data-r="1">Rodada 1</button>
+        <button class="chip r2" data-r="2">Rodada 2</button>
+        <button class="chip r3" data-r="3">Rodada 3</button>
+      </div>
+      <div class="row" id="canalChips">
+        <button class="chip on" data-c="all">Todos os canais</button>
+        <button class="chip" data-c="caze">CazéTV</button>
+        <button class="chip" data-c="globo">Globo</button>
+        <button class="chip" data-c="sbt">SBT</button>
+        <button class="chip" data-c="ge">GE TV</button>
+        <button class="chip" data-c="tbd">A definir</button>
+      </div>
+      <input id="busca" type="text" placeholder="🔎 Buscar seleção... (ex: Brasil, Argentina)">
+      <p class="progress" id="progress"></p>
+    </div>
+    <main id="lista"></main>
+  </section>
+
+  <section id="abaGrupos">
+    <div class="grupos-grid" id="gruposGrid"></div>
+    <p class="legenda">
+      <span class="sq" style="background:var(--ok)"></span>1º e 2º — classificados às oitavas &nbsp;·&nbsp;
+      <span class="sq" style="background:var(--warn)"></span>3º — pode avançar (8 melhores terceiros se classificam)
+    </p>
+    <p class="grupos-nota">As tabelas são calculadas automaticamente a partir dos placares — sincronizados pelo botão <b>Atualizar resultados</b> (jogos em andamento já contam) ou digitados à mão na aba Jogos. Critérios: pontos &gt; saldo &gt; gols pró.</p>
+  </section>
+
+  <div class="notas">
+    <h3>Fique ligado</h3>
+    <ul>
+      <li>Jogos da <b>GE TV</b> serão transmitidos no <b>GloboPlay</b>.</li>
+      <li>Todos os jogos do <b>SBT</b> também serão transmitidos na <b>N SPORTS</b>.</li>
+      <li>Todos os jogos da <b>Globo</b> também serão transmitidos no <b>Globoplay</b>.</li>
+      <li>A <b>última rodada</b> ainda precisa de definição de transmissão (jogos marcados com "A definir").</li>
+      <li>Horários no fuso de <b>Brasília</b>. A programação pode mudar — confira sempre antes do jogo.</li>
+    </ul>
+  </div>
+
+  <div class="acoes">
+    <button class="btn" onclick="shareWhats()">📲 Compartilhar jogos de hoje</button>
+    <button class="btn sec" onclick="copyHoje()">📋 Copiar jogos de hoje</button>
+  </div>
+
+  <footer>
+    <p>Feito para acompanhar a <b>Copa 2026</b> com os amigos. Placares ao vivo via API pública da ESPN; suas marcações ficam salvas só no seu navegador.</p>
+  </footer>
+</div>
+
+<script>
+// ===== BASE DE DADOS — fase de grupos, horário de Brasília =====
+// canais: caze = CazéTV | globo = Globo | sbt = SBT | ge = GE TV | tbd = a definir
+const T = {
+  MEX:["mx","México"], RSA:["za","África do Sul"], KOR:["kr","Coreia do Sul"], CZE:["cz","Tchéquia"],
+  CAN:["ca","Canadá"], BIH:["ba","Bósnia"], QAT:["qa","Catar"], SUI:["ch","Suíça"],
+  USA:["us","Estados Unidos"], PAR:["py","Paraguai"], AUS:["au","Austrália"], TUR:["tr","Turquia"],
+  BRA:["br","Brasil"], MAR:["ma","Marrocos"], HAI:["ht","Haiti"], SCO:["gb-sct","Escócia"],
+  GER:["de","Alemanha"], CUW:["cw","Curaçao"], CIV:["ci","Costa do Marfim"], ECU:["ec","Equador"],
+  NED:["nl","Holanda"], JPN:["jp","Japão"], SWE:["se","Suécia"], TUN:["tn","Tunísia"],
+  ESP:["es","Espanha"], CPV:["cv","Cabo Verde"], KSA:["sa","Arábia Saudita"], URU:["uy","Uruguai"],
+  BEL:["be","Bélgica"], EGY:["eg","Egito"], IRN:["ir","Irã"], NZL:["nz","Nova Zelândia"],
+  FRA:["fr","França"], SEN:["sn","Senegal"], IRQ:["iq","Iraque"], NOR:["no","Noruega"],
+  ARG:["ar","Argentina"], ALG:["dz","Argélia"], AUT:["at","Áustria"], JOR:["jo","Jordânia"],
+  POR:["pt","Portugal"], COD:["cd","RD Congo"], UZB:["uz","Uzbequistão"], COL:["co","Colômbia"],
+  ENG:["gb-eng","Inglaterra"], CRO:["hr","Croácia"], GHA:["gh","Gana"], PAN:["pa","Panamá"]
+};
+
+// grupos oficiais (sorteio FIFA — conferido na ESPN)
+const G = {
+  A:["MEX","RSA","KOR","CZE"], B:["CAN","BIH","SUI","QAT"], C:["BRA","SCO","HAI","MAR"],
+  D:["USA","PAR","AUS","TUR"], E:["GER","ECU","CIV","CUW"], F:["NED","SWE","JPN","TUN"],
+  G:["BEL","IRN","EGY","NZL"], H:["ESP","URU","KSA","CPV"], I:["FRA","NOR","SEN","IRQ"],
+  J:["ARG","AUT","ALG","JOR"], K:["POR","COL","UZB","COD"], L:["ENG","CRO","PAN","GHA"]
+};
+
+const M = [
+  // dia, hora, rodada, timeA, timeB, canais
+  [11,"16:00",1,"MEX","RSA",["caze","globo","sbt","ge"]],
+  [11,"23:00",1,"KOR","CZE",["caze"]],
+  [12,"16:00",1,"CAN","BIH",["caze"]],
+  [12,"22:00",1,"USA","PAR",["caze","globo","sbt"]],
+  [13,"16:00",1,"QAT","SUI",["caze","globo"]],
+  [13,"19:00",1,"BRA","MAR",["caze","globo","ge","sbt"]],
+  [13,"22:00",1,"HAI","SCO",["caze","globo"]],
+  [14,"01:00",1,"AUS","TUR",["caze","sbt","globo","ge"]],
+  [14,"14:00",1,"GER","CUW",["caze"]],
+  [14,"17:00",1,"NED","JPN",["caze","ge"]],
+  [14,"20:00",1,"CIV","ECU",["caze","sbt"]],
+  [14,"23:00",1,"SWE","TUN",["caze","globo"]],
+  [15,"13:00",1,"ESP","CPV",["caze"]],
+  [15,"16:00",1,"BEL","EGY",["caze","globo","ge"]],
+  [15,"19:00",1,"URU","KSA",["caze","ge","sbt"]],
+  [15,"22:00",1,"IRN","NZL",["caze","globo"]],
+  [16,"16:00",1,"FRA","SEN",["caze","ge","sbt"]],
+  [16,"19:00",1,"IRQ","NOR",["caze"]],
+  [16,"22:00",1,"ARG","ALG",["caze"]],
+  [17,"01:00",1,"AUT","JOR",["caze","globo"]],
+  [17,"14:00",1,"POR","COD",["caze","globo"]],
+  [17,"17:00",1,"ENG","CRO",["caze","sbt"]],
+  [17,"20:00",1,"GHA","PAN",["caze"]],
+  [17,"23:00",1,"UZB","COL",["caze"]],
+  // ---- RODADA 2 ----
+  [18,"13:00",2,"CZE","RSA",["caze"]],
+  [18,"16:00",2,"SUI","BIH",["caze","globo","ge","sbt"]],
+  [18,"19:00",2,"CAN","QAT",["caze"]],
+  [18,"22:00",2,"MEX","KOR",["caze"]],
+  [19,"16:00",2,"USA","AUS",["caze"]],
+  [19,"19:00",2,"SCO","MAR",["caze"]],
+  [19,"21:30",2,"BRA","HAI",["caze","globo","ge","sbt"]],
+  [20,"00:00",2,"TUR","PAR",["caze","globo"]],
+  [20,"14:00",2,"NED","SWE",["caze"]],
+  [20,"17:00",2,"GER","CIV",["caze","sbt","globo"]],
+  [20,"21:00",2,"ECU","CUW",["caze"]],
+  [21,"01:00",2,"TUN","JPN",["caze","globo"]],
+  [21,"13:00",2,"ESP","KSA",["caze"]],
+  [21,"16:00",2,"BEL","IRN",["caze"]],
+  [21,"19:00",2,"URU","CPV",["caze","sbt"]],
+  [21,"22:00",2,"NZL","EGY",["caze"]],
+  [22,"14:00",2,"ARG","AUT",["caze","globo","ge","sbt"]],
+  [22,"18:00",2,"FRA","IRQ",["caze"]],
+  [22,"21:00",2,"NOR","SEN",["caze","globo"]],
+  [23,"00:00",2,"JOR","ALG",["caze","globo","sbt"]],
+  [23,"14:00",2,"POR","UZB",["caze"]],
+  [23,"17:00",2,"ENG","GHA",["caze","globo"]],
+  [23,"20:00",2,"PAN","CRO",["caze"]],
+  [23,"23:00",2,"COL","COD",["caze","globo"]],
+  // ---- RODADA 3 ----
+  [24,"16:00",3,"BIH","QAT",["caze","tbd"]],
+  [24,"16:00",3,"SUI","CAN",["caze","tbd"]],
+  [24,"19:00",3,"MAR","HAI",["caze","tbd"]],
+  [24,"19:00",3,"SCO","BRA",["caze","ge","sbt"]],
+  [24,"22:00",3,"RSA","KOR",["caze","tbd"]],
+  [24,"22:00",3,"CZE","MEX",["caze","tbd"]],
+  [25,"17:00",3,"CUW","CIV",["caze","tbd"]],
+  [25,"17:00",3,"ECU","GER",["caze","tbd"]],
+  [25,"20:00",3,"TUN","NED",["caze","tbd"]],
+  [25,"20:00",3,"JPN","SWE",["caze","tbd"]],
+  [25,"23:00",3,"PAR","AUS",["caze","tbd"]],
+  [25,"23:00",3,"TUR","USA",["caze","tbd"]],
+  [26,"16:00",3,"SEN","IRQ",["caze","tbd"]],
+  [26,"16:00",3,"NOR","FRA",["caze","tbd"]],
+  [26,"21:00",3,"URU","ESP",["caze","tbd"]],
+  [26,"21:00",3,"CPV","KSA",["caze","tbd"]],
+  [27,"00:00",3,"EGY","IRN",["caze","tbd"]],
+  [27,"00:00",3,"BEL","NZL",["caze","tbd"]],
+  [27,"18:00",3,"PAN","ENG",["caze","tbd"]],
+  [27,"18:00",3,"CRO","GHA",["caze","tbd"]],
+  [27,"20:30",3,"COD","UZB",["caze","tbd"]],
+  [27,"20:30",3,"COL","POR",["caze","tbd"]],
+  [27,"23:00",3,"ALG","AUT",["caze","tbd"]],
+  [27,"23:00",3,"JOR","ARG",["caze","tbd"]]
+];
+
+const CANAL_NOME = {caze:"CazéTV", globo:"Globo", sbt:"SBT", ge:"GE TV", tbd:"A definir"};
+const WD = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const DUR_MS = 2 * 60 * 60 * 1000;
+const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260627&limit=100";
+
+// nomes da ESPN (inglês) -> código interno
+const ESPN_MAP = {
+  "mexico":"MEX","south africa":"RSA","south korea":"KOR","korea republic":"KOR",
+  "czechia":"CZE","czech republic":"CZE","canada":"CAN","bosnia-herzegovina":"BIH",
+  "bosnia and herzegovina":"BIH","switzerland":"SUI","qatar":"QAT","united states":"USA",
+  "usa":"USA","paraguay":"PAR","australia":"AUS","turkiye":"TUR","turkey":"TUR",
+  "brazil":"BRA","morocco":"MAR","haiti":"HAI","scotland":"SCO","germany":"GER",
+  "curacao":"CUW","ivory coast":"CIV","cote d'ivoire":"CIV","ecuador":"ECU",
+  "netherlands":"NED","japan":"JPN","sweden":"SWE","tunisia":"TUN","spain":"ESP",
+  "cape verde":"CPV","cabo verde":"CPV","saudi arabia":"KSA","uruguay":"URU",
+  "belgium":"BEL","egypt":"EGY","iran":"IRN","new zealand":"NZL","france":"FRA",
+  "senegal":"SEN","iraq":"IRQ","norway":"NOR","argentina":"ARG","algeria":"ALG",
+  "austria":"AUT","jordan":"JOR","portugal":"POR","congo dr":"COD","dr congo":"COD",
+  "uzbekistan":"UZB","colombia":"COL","england":"ENG","croatia":"CRO","ghana":"GHA","panama":"PAN"
+};
+
+// estado salvo no navegador
+let store = {};
+try { store = JSON.parse(localStorage.getItem("copa2026") || "{}"); } catch(e){ store = {}; }
+function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
+
+let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
+
+function matchDate(m){
+  const [h,min] = m[1].split(":").map(Number);
+  return new Date(2026, 5, m[0], h, min);
+}
+function matchId(m){ return m[0] + "_" + m[1] + "_" + m[3] + "_" + m[4]; }
+// remove acentos para busca e matching de nomes
+function norm(s){ return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
+
+// ===== ABAS =====
+function trocarAba(qual){
+  abaAtual = qual;
+  document.getElementById("abaJogos").style.display = qual === "jogos" ? "block" : "none";
+  document.getElementById("abaGrupos").style.display = qual === "grupos" ? "block" : "none";
+  document.getElementById("tabJogos").classList.toggle("on", qual === "jogos");
+  document.getElementById("tabGrupos").classList.toggle("on", qual === "grupos");
+  if (qual === "grupos") renderGrupos();
+}
+
+// ===== ABA JOGOS =====
+function visivel(m){
+  if (fRodada && m[2] !== fRodada) return false;
+  if (fCanal !== "all" && !m[5].includes(fCanal)) return false;
+  if (fBusca){
+    const q = norm(fBusca);
+    if (!norm(T[m[3]][1]).includes(q) && !norm(T[m[4]][1]).includes(q)) return false;
+  }
+  return true;
+}
+
+function render(){
+  const lista = document.getElementById("lista");
+  const agora = new Date();
+  const porDia = {};
+  M.filter(visivel).forEach(m => { (porDia[m[0]] = porDia[m[0]] || []).push(m); });
+
+  const dias = Object.keys(porDia).map(Number).sort((a,b)=>a-b);
+  if (!dias.length){
+    lista.innerHTML = '<p class="vazio">Nenhum jogo encontrado com esses filtros. 🤷</p>';
+  } else {
+    lista.innerHTML = dias.map(d => {
+      const jogos = porDia[d];
+      const r = jogos[0][2];
+      const data = new Date(2026, 5, d);
+      const hoje = (agora.getFullYear()===2026 && agora.getMonth()===5 && agora.getDate()===d) ? " · HOJE 🔥" : "";
+      return `<section class="dia">
+        <div class="dia-head r${r}">
+          <h2>${String(d).padStart(2,"0")}/06</h2>
+          <span class="wd">${WD[data.getDay()]}${hoje}</span>
+          <span class="rod r${r}">Rodada ${r}</span>
+        </div>
+        ${jogos.map(m => jogoHTML(m, agora)).join("")}
+      </section>`;
+    }).join("");
+  }
+  updateProgress();
+  if (abaAtual === "grupos") renderGrupos();
+}
+
+function statusJogo(m, agora){
+  const st = store[matchId(m)] || {};
+  if (st.state === "in")  return {tag:`<span class="live-tag">● AO VIVO ${st.det || ""}</span>`, vivo:true, fim:false};
+  if (st.state === "post") return {tag:'<span class="fim-tag">ENCERRADO</span>', vivo:false, fim:true};
+  if (!st.state){ // sem dado da internet: estima pela hora
+    const dt = matchDate(m);
+    if (agora >= dt && agora <= new Date(dt.getTime() + DUR_MS))
+      return {tag:'<span class="live-tag">● ROLANDO</span>', vivo:true, fim:false};
+  }
+  return {tag:"", vivo:false, fim:false};
+}
+
+function jogoHTML(m, agora){
+  const id = matchId(m);
+  const st = store[id] || {};
+  const sj = statusJogo(m, agora);
+  const ro = (st.state === "in" || st.state === "post") ? "readonly" : "";
+  const [ca, na] = T[m[3]], [cb, nb] = T[m[4]];
+  return `<div class="jogo ${st.w ? "assistido" : ""} ${sj.vivo ? "aovivo" : ""}" id="${id}">
+    <div class="hora">${m[1].replace(":00","h").replace(":","h")}${sj.tag}</div>
+    <div class="times">
+      <div class="linha-time">
+        <img src="https://flagcdn.com/w40/${ca}.png" alt="${na}" loading="lazy"><span class="nome">${na}</span>
+        <input class="placar" type="number" min="0" max="99" placeholder="-" value="${st.a ?? ""}" ${ro} onchange="setPlacar('${id}','a',this.value)">
+      </div>
+      <div class="linha-time">
+        <img src="https://flagcdn.com/w40/${cb}.png" alt="${nb}" loading="lazy"><span class="nome">${nb}</span>
+        <input class="placar" type="number" min="0" max="99" placeholder="-" value="${st.b ?? ""}" ${ro} onchange="setPlacar('${id}','b',this.value)">
+      </div>
+    </div>
+    <div class="lado">
+      <div class="canais">${m[5].map(c => `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
+      <button class="check" onclick="toggleW('${id}')">${st.w ? "✓ Assisti" : "Marcar visto"}</button>
+    </div>
+  </div>`;
+}
+
+function setPlacar(id, lado, v){
+  store[id] = store[id] || {};
+  store[id][lado] = v === "" ? undefined : Number(v);
+  save();
+  if (abaAtual === "grupos") renderGrupos();
+}
+function toggleW(id){
+  store[id] = store[id] || {};
+  store[id].w = !store[id].w;
+  save(); render();
+}
+function updateProgress(){
+  const total = M.length;
+  const vistos = M.filter(m => (store[matchId(m)]||{}).w).length;
+  document.getElementById("progress").innerHTML =
+    `<b>${vistos}</b> de <b>${total}</b> jogos assistidos · 12 grupos · 11 a 27 de junho`;
+}
+
+// ===== ABA GRUPOS (tabela calculada dos placares) =====
+function renderGrupos(){
+  const grid = document.getElementById("gruposGrid");
+  grid.innerHTML = Object.keys(G).map(letra => {
+    const times = G[letra];
+    const stats = {};
+    times.forEach(t => stats[t] = {pts:0,j:0,v:0,e:0,d:0,gp:0,gc:0});
+    M.forEach(m => {
+      if (!times.includes(m[3]) || !times.includes(m[4])) return;
+      const st = store[matchId(m)] || {};
+      if (typeof st.a !== "number" || typeof st.b !== "number") return;
+      const A = stats[m[3]], B = stats[m[4]];
+      A.j++; B.j++; A.gp += st.a; A.gc += st.b; B.gp += st.b; B.gc += st.a;
+      if (st.a > st.b){ A.v++; B.d++; A.pts += 3; }
+      else if (st.a < st.b){ B.v++; A.d++; B.pts += 3; }
+      else { A.e++; B.e++; A.pts++; B.pts++; }
+    });
+    const ordem = [...times].sort((x,y) => {
+      const a = stats[x], b = stats[y];
+      return (b.pts - a.pts) || ((b.gp-b.gc) - (a.gp-a.gc)) || (b.gp - a.gp) || T[x][1].localeCompare(T[y][1]);
+    });
+    return `<div class="grupo">
+      <h3>Grupo ${letra}</h3>
+      <table>
+        <tr><th>#</th><th class="t">Seleção</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>
+        ${ordem.map((t,i) => {
+          const s = stats[t], cls = i < 2 ? "q1" : (i === 2 ? "q3" : "");
+          return `<tr class="${cls}"><td>${i+1}º</td>
+            <td class="t"><img src="https://flagcdn.com/w40/${T[t][0]}.png" alt="">${T[t][1]}</td>
+            <td class="pts">${s.pts}</td><td>${s.j}</td><td>${s.v}</td><td>${s.e}</td><td>${s.d}</td>
+            <td>${s.gp}</td><td>${s.gc}</td><td>${s.gp - s.gc}</td></tr>`;
+        }).join("")}
+      </table>
+    </div>`;
+  }).join("");
+}
+
+// ===== SINCRONIZAÇÃO COM A INTERNET (ESPN) =====
+function setStatus(msg, cls){
+  const el = document.getElementById("syncStatus");
+  el.textContent = msg; el.className = "status " + (cls || "");
+}
+function codeFromTeam(team){
+  if (!team) return null;
+  for (const nome of [team.name, team.displayName, team.shortDisplayName]){
+    if (nome && ESPN_MAP[norm(nome)]) return ESPN_MAP[norm(nome)];
+  }
+  return null;
+}
+async function atualizar(){
+  const btn = document.getElementById("btnSync");
+  btn.disabled = true; setStatus("Atualizando...");
+  try {
+    const res = await fetch(ESPN_URL);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    let hits = 0;
+    (j.events || []).forEach(ev => {
+      const c = ev.competitions && ev.competitions[0];
+      if (!c || !c.competitors) return;
+      const home = c.competitors.find(x => x.homeAway === "home");
+      const away = c.competitors.find(x => x.homeAway === "away");
+      const ch = codeFromTeam(home && home.team), ca = codeFromTeam(away && away.team);
+      if (!ch || !ca) return;
+      const fx = M.find(m => (m[3]===ch && m[4]===ca) || (m[3]===ca && m[4]===ch));
+      if (!fx) return;
+      const id = matchId(fx);
+      const st = store[id] = store[id] || {};
+      const state = ev.status && ev.status.type ? ev.status.type.state : null; // pre | in | post
+      if (state === "in" || state === "post"){
+        const sH = Number(home.score), sA = Number(away.score);
+        if (!isNaN(sH) && !isNaN(sA)){
+          if (fx[3] === ch){ st.a = sH; st.b = sA; } else { st.a = sA; st.b = sH; }
+        }
+      }
+      st.state = state;
+      st.det = (ev.status && ev.status.type && state === "in") ? (ev.status.displayClock || ev.status.type.shortDetail || "") : "";
+      hits++;
+    });
+    save(); render(); renderGrupos();
+    const h = new Date();
+    setStatus(`✓ Atualizado às ${String(h.getHours()).padStart(2,"0")}:${String(h.getMinutes()).padStart(2,"0")}:${String(h.getSeconds()).padStart(2,"0")} — ${hits} jogos sincronizados`, "ok");
+  } catch(e){
+    setStatus("⚠ Não foi possível atualizar (verifique a internet). Você ainda pode digitar os placares à mão.", "err");
+  }
+  btn.disabled = false;
+}
+
+// auto-atualização a cada 60s
+const autoChk = document.getElementById("autoChk");
+autoChk.checked = !!store.__auto;
+autoChk.addEventListener("change", () => { store.__auto = autoChk.checked; save(); });
+setInterval(() => {
+  if (autoChk.checked && document.visibilityState === "visible") atualizar();
+}, 60000);
+
+// ===== FILTROS =====
+document.getElementById("rodadaChips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  fRodada = Number(b.dataset.r);
+  [...e.currentTarget.children].forEach(c => c.classList.toggle("on", c === b));
+  render();
+});
+document.getElementById("canalChips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  fCanal = b.dataset.c;
+  [...e.currentTarget.children].forEach(c => c.classList.toggle("on", c === b));
+  render();
+});
+document.getElementById("busca").addEventListener("input", e => {
+  fBusca = e.target.value.trim(); render();
+});
+
+// ===== PRÓXIMO JOGO + CONTAGEM =====
+function tick(){
+  const agora = new Date();
+  const futuros = M.map(m => ({m, d: matchDate(m)}))
+                   .filter(x => x.d.getTime() + DUR_MS > agora.getTime())
+                   .sort((a,b) => a.d - b.d);
+  const box = document.getElementById("nextBox");
+  if (!futuros.length){ box.style.display = "none"; return; }
+  box.style.display = "flex";
+  const d = futuros[0].d;
+  // todos os jogos que começam no mesmo horário (simultâneos)
+  const simult = futuros.filter(x => x.d.getTime() === d.getTime());
+  box.querySelector(".lbl").textContent = simult.length > 1 ? "⚽ Próximos jogos" : "⚽ Próximo jogo";
+  document.getElementById("nextGame").innerHTML = simult.map(({m}) => {
+    const canais = m[5].map(c => CANAL_NOME[c]).join(", ");
+    return `${T[m[3]][1]} × ${T[m[4]][1]} — ${String(m[0]).padStart(2,"0")}/06 às ${m[1].replace(":","h")} (${canais})`;
+  }).join("<br>");
+  const diff = d - agora;
+  if (diff <= 0){
+    document.getElementById("nextCd").textContent = "🔴 ROLANDO AGORA!";
+  } else {
+    const dd = Math.floor(diff/86400000), hh = Math.floor(diff%86400000/3600000),
+          mm = Math.floor(diff%3600000/60000), ss = Math.floor(diff%60000/1000);
+    document.getElementById("nextCd").textContent =
+      "⏱ " + (dd ? dd + "d " : "") + String(hh).padStart(2,"0") + ":" + String(mm).padStart(2,"0") + ":" + String(ss).padStart(2,"0");
+  }
+}
+setInterval(tick, 1000);
+
+// ===== COMPARTILHAR =====
+function textoHoje(){
+  const agora = new Date();
+  const d = (agora.getFullYear()===2026 && agora.getMonth()===5) ? agora.getDate() : 11;
+  const jogos = M.filter(m => m[0] === d);
+  if (!jogos.length) return "Hoje não tem jogo da fase de grupos. 😢";
+  let txt = `⚽ COPA 2026 — JOGOS DE HOJE (${String(d).padStart(2,"0")}/06):\n\n`;
+  jogos.forEach(m => {
+    const st = store[matchId(m)] || {};
+    const placar = (typeof st.a === "number" && typeof st.b === "number") ? ` (${st.a} x ${st.b})` : "";
+    txt += `🕐 ${m[1].replace(":","h")} — ${T[m[3]][1]} × ${T[m[4]][1]}${placar} | ${m[5].map(c=>CANAL_NOME[c]).join(", ")}\n`;
+  });
+  txt += "\n📺 Bora assistir!";
+  return txt;
+}
+function shareWhats(){
+  const txt = textoHoje();
+  if (navigator.share){ navigator.share({text: txt}).catch(()=>{}); }
+  else window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank");
+}
+function copyHoje(){
+  navigator.clipboard.writeText(textoHoje()).then(() => alert("Jogos de hoje copiados! 📋"));
+}
+
+render();
+renderGrupos();
+tick();
+</script>
+</body>
+</html>
