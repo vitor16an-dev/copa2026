@@ -154,7 +154,10 @@
   .badge{
     font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px;
     text-transform:uppercase; letter-spacing:.5px; color:#000;
+    text-decoration:none; display:inline-block;
   }
+  a.badge{cursor:pointer; transition:.15s;}
+  a.badge:hover{transform:scale(1.08); filter:brightness(1.15); box-shadow:0 0 8px rgba(255,255,255,.25);}
   .b-caze{background:#FFCA0A;}
   .b-globo{background:#3FA9F5;}
   .b-sbt{background:#3DDC84;}
@@ -293,6 +296,7 @@
   <div class="notas">
     <h3>Fique ligado</h3>
     <ul>
+      <li><b>Toque no canal</b> ao lado de cada jogo pra abrir a transmissão: CazéTV abre as lives do YouTube, Globo e GE TV abrem o Globoplay, SBT abre o SBT ao vivo.</li>
       <li>Jogos da <b>GE TV</b> serão transmitidos no <b>GloboPlay</b>.</li>
       <li>Todos os jogos do <b>SBT</b> também serão transmitidos na <b>N SPORTS</b>.</li>
       <li>Todos os jogos da <b>Globo</b> também serão transmitidos no <b>Globoplay</b>.</li>
@@ -411,6 +415,19 @@ const M = [
 ];
 
 const CANAL_NOME = {caze:"CazéTV", globo:"Globo", sbt:"SBT", ge:"GE TV", tbd:"A definir"};
+// onde assistir cada canal online (GE TV e Globo passam no Globoplay)
+const CANAL_URL = {
+  caze:"https://www.youtube.com/cazetv/streams",
+  globo:"https://globoplay.globo.com/",
+  sbt:"https://sbt.com.br/ao-vivo",
+  ge:"https://globoplay.globo.com/"
+};
+const CANAL_DICA = {
+  caze:"Assistir ao vivo na CazéTV (YouTube)",
+  globo:"Assistir no Globoplay",
+  sbt:"Assistir no SBT ao vivo",
+  ge:"Assistir no Globoplay (GE TV)"
+};
 const WD = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const DUR_MS = 2 * 60 * 60 * 1000;
 const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260627&limit=100";
@@ -540,7 +557,9 @@ function jogoHTML(m, agora){
       </div>
     </div>
     <div class="lado">
-      <div class="canais">${m[5].map(c => `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
+      <div class="canais">${m[5].map(c => CANAL_URL[c]
+        ? `<a class="badge b-${c}" href="${CANAL_URL[c]}" target="_blank" rel="noopener" title="${CANAL_DICA[c]}">▶ ${CANAL_NOME[c]}</a>`
+        : `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
       <button class="check" onclick="toggleW('${id}')">${st.w ? "✓ Assisti" : "Marcar visto"}</button>
     </div>
   </div>`;
