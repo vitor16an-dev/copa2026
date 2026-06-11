@@ -214,7 +214,7 @@
   .notas li{font-size:13px; color:#ccc; margin:6px 0 6px 18px;}
   .notas b{color:var(--accent2);}
 
-  .acoes{display:flex; gap:10px; flex-wrap:wrap; margin-top:20px;}
+  .acoes{display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 4px;}
   .vazio{text-align:center; color:#777; padding:40px 0; font-size:14px;}
   footer{margin-top:40px; text-align:left; font-size:11px; color:#666;}
   footer b{color:var(--accent);}
@@ -247,6 +247,11 @@
     <span class="lbl">⚽ Próximo jogo</span>
     <span class="game" id="nextGame"></span>
     <span class="cd" id="nextCd"></span>
+  </div>
+
+  <div class="acoes">
+    <button class="btn" onclick="shareWhats()">📲 Compartilhar jogos de hoje</button>
+    <button class="btn sec" onclick="copyHoje()">📋 Copiar jogos de hoje</button>
   </div>
 
   <nav class="tabs">
@@ -294,11 +299,6 @@
       <li>A <b>última rodada</b> ainda precisa de definição de transmissão (jogos marcados com "A definir").</li>
       <li>Os horários são <b>convertidos automaticamente para o fuso de quem abre a página</b> — datas dos blocos seguem o calendário de Brasília (se no seu fuso o jogo cair no dia seguinte/anterior, aparece a etiqueta <b>+1 dia</b>/<b>-1 dia</b>). A programação pode mudar — confira sempre antes do jogo.</li>
     </ul>
-  </div>
-
-  <div class="acoes">
-    <button class="btn" onclick="shareWhats()">📲 Compartilhar jogos de hoje</button>
-    <button class="btn sec" onclick="copyHoje()">📋 Copiar jogos de hoje</button>
   </div>
 
   <footer>
