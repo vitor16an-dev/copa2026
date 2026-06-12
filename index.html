@@ -239,8 +239,11 @@
 
   @media (max-width:520px){
     .jogo{grid-template-columns:54px 1fr;}
-    .lado{grid-column:1 / -1; flex-direction:row; justify-content:space-between; align-items:center;}
-    .canais{justify-content:flex-start;}
+    .lado{grid-column:1 / -1; flex-direction:row; justify-content:space-between; align-items:center; gap:8px;}
+    /* badges em linha única, quebrando só quando não couber */
+    .canais{justify-content:flex-start; max-width:none; flex:1;}
+    /* botões de compartilhar/copiar com o mesmo tamanho, de ponta a ponta */
+    .acoes .btn{flex:1; text-align:center; padding:11px 6px; white-space:nowrap;}
   }
 </style>
 </head>
