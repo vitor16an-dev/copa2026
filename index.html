@@ -95,6 +95,12 @@
   .progress{font-size:12px; color:#aaa; margin-top:8px;}
   .progress b{color:var(--accent2); font-weight:600;}
 
+  /* dias anteriores recolhidos */
+  details.passado{margin-top:24px; border:1px solid var(--cinza2); border-radius:12px; padding:0 14px 4px; background:#0d0d0d;}
+  details.passado summary{cursor:pointer; padding:13px 0; color:#aaa; font-size:13px; font-weight:600; letter-spacing:.5px; list-style:none; user-select:none;}
+  details.passado summary::-webkit-details-marker{display:none;}
+  details.passado summary:hover, details.passado[open] summary{color:var(--accent);}
+
   /* dias */
   .dia{margin-top:26px;}
   .dia-head{
@@ -159,8 +165,14 @@
   .check:hover{border-color:var(--accent); color:var(--accent);}
   .jogo.assistido .check{border-color:var(--accent); color:var(--accent);}
 
-  /* ===== aba grupos ===== */
-  #abaGrupos{display:none;}
+  /* ===== abas grupos / stats ===== */
+  #abaGrupos, #abaStats{display:none;}
+  .stat-linha{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #1a1a1a; font-size:13px; font-weight:400;}
+  .stat-linha .pos{color:#888; font-size:11px; width:24px; flex-shrink:0;}
+  .stat-linha img{width:20px; border-radius:2px;}
+  .stat-linha .sn{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .stat-linha b{color:var(--accent2);}
+  .stat-vazio{font-size:12px; color:#777; padding:8px 0;}
   .grupos-grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));
     gap:14px; margin-top:20px;
@@ -223,7 +235,7 @@
 
   <header>
     <h1>Copa 2026<br>ao vivo</h1>
-    <p class="sub">Fase de grupos — dia, horário, <b>onde assistir</b>, <b>resultados em tempo real</b> e <b>tabelas dos grupos</b>. Marque o que já viu!</p>
+    <p class="sub">Fase de grupos — dia, horário, <b>onde assistir</b>, <b>resultados em tempo real</b>, <b>tabelas dos grupos</b> e <b>estatísticas</b>. Marque o que já viu!</p>
     <p class="credit" id="tzInfo"></p>
     <p class="credit">Transmissões: @datafutebol · Placares: ESPN</p>
     <p class="credit">Desenvolvido por <b style="color:var(--accent2);font-weight:600">Vitor Araújo</b></p>
@@ -243,6 +255,7 @@
   <nav class="tabs">
     <button class="tab on" id="tabJogos" onclick="trocarAba('jogos')">📅 Jogos</button>
     <button class="tab" id="tabGrupos" onclick="trocarAba('grupos')">🏆 Grupos</button>
+    <button class="tab" id="tabStats" onclick="trocarAba('stats')">📊 Stats</button>
   </nav>
 
   <section id="abaJogos">
@@ -274,6 +287,11 @@
       <span class="sq" style="background:var(--warn)"></span>3º — pode avançar (8 melhores terceiros se classificam)
     </p>
     <p class="grupos-nota">As tabelas são calculadas automaticamente a partir dos placares — <b>atualizados sozinhos da internet a cada minuto</b> (jogos em andamento já contam) ou digitados à mão na aba Jogos. Critérios: pontos &gt; saldo &gt; gols pró.</p>
+  </section>
+
+  <section id="abaStats">
+    <div class="grupos-grid" id="statsGrid"></div>
+    <p class="grupos-nota">Estatísticas calculadas dos lances oficiais de cada partida (via ESPN), <b>atualizadas automaticamente a cada minuto</b> — gols em andamento já contam. Gols contra não entram na artilharia; segundo amarelo conta como amarelo e vermelho.</p>
   </section>
 
   <div class="notas">
@@ -447,6 +465,11 @@ function matchDate(m){
 function horaLocal(dt){
   return dt.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":","h");
 }
+// dia do calendário de Brasília (UTC-3) como número comparável, ex: 20260611
+function brtDayNum(date){
+  const s = new Date(date.getTime() - 10800000);
+  return s.getUTCFullYear()*10000 + (s.getUTCMonth()+1)*100 + s.getUTCDate();
+}
 // se no fuso local o jogo cair em outro dia do calendário, sinaliza (+1d / -1d)
 function shiftDia(dt, diaBrasilia){
   const local = dt.getDate() + (dt.getMonth() === 6 ? 30 : 0); // jul vira dia 31+ p/ comparar
@@ -459,13 +482,15 @@ function matchId(m){ return m[0] + "_" + m[1] + "_" + m[3] + "_" + m[4]; }
 function norm(s){ return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
 
 // ===== ABAS =====
+const ABAS = {jogos:["abaJogos","tabJogos"], grupos:["abaGrupos","tabGrupos"], stats:["abaStats","tabStats"]};
 function trocarAba(qual){
   abaAtual = qual;
-  document.getElementById("abaJogos").style.display = qual === "jogos" ? "block" : "none";
-  document.getElementById("abaGrupos").style.display = qual === "grupos" ? "block" : "none";
-  document.getElementById("tabJogos").classList.toggle("on", qual === "jogos");
-  document.getElementById("tabGrupos").classList.toggle("on", qual === "grupos");
+  for (const k in ABAS){
+    document.getElementById(ABAS[k][0]).style.display = k === qual ? "block" : "none";
+    document.getElementById(ABAS[k][1]).classList.toggle("on", k === qual);
+  }
   if (qual === "grupos") renderGrupos();
+  if (qual === "stats") renderStats();
 }
 
 // ===== ABA JOGOS =====
@@ -486,23 +511,34 @@ function render(){
   M.filter(visivel).forEach(m => { (porDia[m[0]] = porDia[m[0]] || []).push(m); });
 
   const dias = Object.keys(porDia).map(Number).sort((a,b)=>a-b);
+  const hojeN = brtDayNum(agora);
+  const diaHTML = d => {
+    const jogos = porDia[d];
+    const r = jogos[0][2];
+    const data = new Date(2026, 5, d);
+    const hoje = (20260600 + d === hojeN) ? " · HOJE 🔥" : "";
+    return `<section class="dia">
+      <div class="dia-head r${r}">
+        <h2>${String(d).padStart(2,"0")}/06</h2>
+        <span class="wd">${WD[data.getDay()]}${hoje}</span>
+        <span class="rod r${r}">Rodada ${r}</span>
+      </div>
+      ${jogos.map(m => jogoHTML(m, agora)).join("")}
+    </section>`;
+  };
   if (!dias.length){
     lista.innerHTML = '<p class="vazio">Nenhum jogo encontrado com esses filtros. 🤷</p>';
   } else {
-    lista.innerHTML = dias.map(d => {
-      const jogos = porDia[d];
-      const r = jogos[0][2];
-      const data = new Date(2026, 5, d);
-      const hoje = (agora.getFullYear()===2026 && agora.getMonth()===5 && agora.getDate()===d) ? " · HOJE 🔥" : "";
-      return `<section class="dia">
-        <div class="dia-head r${r}">
-          <h2>${String(d).padStart(2,"0")}/06</h2>
-          <span class="wd">${WD[data.getDay()]}${hoje}</span>
-          <span class="rod r${r}">Rodada ${r}</span>
-        </div>
-        ${jogos.map(m => jogoHTML(m, agora)).join("")}
-      </section>`;
-    }).join("");
+    // dias que já passaram (calendário de Brasília) ficam recolhidos; a página abre em hoje + próximos
+    const passados = dias.filter(d => 20260600 + d < hojeN);
+    const atuais = dias.filter(d => 20260600 + d >= hojeN);
+    let html = "";
+    if (passados.length){
+      const n = passados.reduce((acc, d) => acc + porDia[d].length, 0);
+      html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${passados.map(diaHTML).join("")}</details>`;
+    }
+    html += atuais.map(diaHTML).join("");
+    lista.innerHTML = html;
   }
   updateProgress();
   if (abaAtual === "grupos") renderGrupos();
@@ -605,6 +641,33 @@ function renderGrupos(){
   }).join("");
 }
 
+// ===== ABA STATS (artilharia, cartões, gols por seleção) =====
+function renderStats(){
+  const grid = document.getElementById("statsGrid");
+  const s = store.__stats;
+  const temDados = s && (Object.keys(s.gols).length || Object.keys(s.ama).length || Object.keys(s.ver).length || Object.keys(s.sel).length);
+  if (!temDados){
+    grid.innerHTML = '<p class="vazio">Ainda sem estatísticas — elas aparecem aqui conforme os jogos acontecem. ⏳</p>';
+    return;
+  }
+  const linhaJogador = ([k, v], i) => {
+    const [nome, code] = k.split("|");
+    const flag = code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
+    return `<div class="stat-linha"><span class="pos">${i+1}º</span>${flag}<span class="sn">${nome}</span><b>${v}</b></div>`;
+  };
+  const card = (obj, titulo, vazioTxt) => {
+    const linhas = Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0,10).map(linhaJogador).join("");
+    return `<div class="grupo"><h3>${titulo}</h3>${linhas || `<p class="stat-vazio">${vazioTxt}</p>`}</div>`;
+  };
+  const selLinhas = Object.entries(s.sel).sort((a,b) => b[1]-a[1]).slice(0,10)
+    .map(([code, v], i) => `<div class="stat-linha"><span class="pos">${i+1}º</span><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="sn">${T[code][1]}</span><b>${v}</b></div>`).join("");
+  grid.innerHTML =
+    card(s.gols, "⚽ Artilharia", "Nenhum gol ainda") +
+    card(s.ama, "🟨 Cartões amarelos", "Nenhum cartão ainda") +
+    card(s.ver, "🟥 Cartões vermelhos", "Nenhum vermelho ainda") +
+    `<div class="grupo"><h3>🥅 Gols por seleção</h3>${selLinhas || '<p class="stat-vazio">Nenhum gol ainda</p>'}</div>`;
+}
+
 // ===== SINCRONIZAÇÃO AUTOMÁTICA COM A INTERNET (ESPN) =====
 function codeFromTeam(team){
   if (!team) return null;
@@ -619,6 +682,8 @@ async function atualizar(){
     if (!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     let hits = 0;
+    const agg = {gols:{}, ama:{}, ver:{}, sel:{}};
+    const addP = (obj, nome, code) => { const k = nome + "|" + (code || ""); obj[k] = (obj[k] || 0) + 1; };
     (j.events || []).forEach(ev => {
       const c = ev.competitions && ev.competitions[0];
       if (!c || !c.competitors) return;
@@ -626,6 +691,22 @@ async function atualizar(){
       const away = c.competitors.find(x => x.homeAway === "away");
       const ch = codeFromTeam(home && home.team), ca = codeFromTeam(away && away.team);
       if (!ch || !ca) return;
+      // estatísticas: gols e cartões lance a lance
+      const idMap = {};
+      if (home.team) idMap[String(home.team.id)] = ch;
+      if (away.team) idMap[String(away.team.id)] = ca;
+      (c.details || []).forEach(l => {
+        const ath = (l.athletesInvolved || [])[0];
+        const nome = ath ? ath.displayName : null;
+        const tcode = idMap[String(((ath && ath.team) || l.team || {}).id)];
+        if (l.scoringPlay && !l.shootout){
+          const gcode = idMap[String((l.team || {}).id)];
+          if (gcode) agg.sel[gcode] = (agg.sel[gcode] || 0) + 1;
+          if (nome && !l.ownGoal) addP(agg.gols, nome, tcode);
+        }
+        if (l.yellowCard && nome) addP(agg.ama, nome, tcode);
+        if (l.redCard && nome) addP(agg.ver, nome, tcode);
+      });
       const fx = M.find(m => (m[3]===ch && m[4]===ca) || (m[3]===ca && m[4]===ch));
       if (!fx) return;
       const id = matchId(fx);
@@ -641,8 +722,9 @@ async function atualizar(){
       st.det = (ev.status && ev.status.type && state === "in") ? (ev.status.displayClock || ev.status.type.shortDetail || "") : "";
       hits++;
     });
+    store.__stats = agg;
     store.__updatedAt = Date.now();
-    save(); render(); renderGrupos();
+    save(); render(); renderGrupos(); renderStats();
   } catch(e){
     // sem internet ou API fora do ar: segue com os dados salvos; tenta de novo no próximo ciclo
   }
@@ -704,19 +786,28 @@ function tick(){
 setInterval(tick, 1000);
 
 // ===== COMPARTILHAR =====
+const NOME_CURTO = {KOR:"Coreia", USA:"EUA"};
+function nomeMsg(code){ return NOME_CURTO[code] || T[code][1]; }
 function textoHoje(){
   const agora = new Date();
-  const d = (agora.getFullYear()===2026 && agora.getMonth()===5) ? agora.getDate() : 11;
+  const hojeN = brtDayNum(agora);
+  const d = (Math.floor(hojeN/100) === 202606 && hojeN%100 >= 11 && hojeN%100 <= 27) ? hojeN%100 : 11;
   const jogos = M.filter(m => m[0] === d);
   if (!jogos.length) return "Hoje não tem jogo da fase de grupos. 😢";
-  let txt = `⚽ COPA 2026 — JOGOS DE HOJE (${String(d).padStart(2,"0")}/06):\n\n`;
+  let txt = `⚽ COPA HOJE (${String(d).padStart(2,"0")}/06)\n`;
   jogos.forEach(m => {
     const st = store[matchId(m)] || {};
-    const placar = (typeof st.a === "number" && typeof st.b === "number") ? ` (${st.a} x ${st.b})` : "";
-    txt += `🕐 ${horaLocal(matchDate(m))} — ${T[m[3]][1]} × ${T[m[4]][1]}${placar} | ${m[5].map(c=>CANAL_NOME[c]).join(", ")}\n`;
+    const dt = matchDate(m);
+    const temPlacar = typeof st.a === "number" && typeof st.b === "number";
+    const fimJanela = agora > new Date(dt.getTime() + DUR_MS);
+    const fim = st.state === "post" || (!st.state && temPlacar && fimJanela);
+    const vivo = st.state === "in" || (!st.state && agora >= dt && !fimJanela);
+    const a = nomeMsg(m[3]), b = nomeMsg(m[4]);
+    if (fim && temPlacar) txt += `🏁 ${a} ${st.a}x${st.b} ${b}\n`;
+    else if (vivo) txt += temPlacar ? `🔴 ${a} ${st.a}x${st.b} ${b}\n` : `🔴 ${a} × ${b} (ao vivo)\n`;
+    else txt += `🕐 ${horaLocal(dt).replace("h00","h")} ${a} × ${b}. ${m[5].map(c=>CANAL_NOME[c]).join(", ")}\n`;
   });
-  txt += "\n📺 Bora assistir!";
-  txt += "\n👉 Acesse tinyurl.com/copa2026aovivo e acompanhe todos os jogos, placares ao vivo e as tabelas dos grupos!";
+  txt += "👉 links de transmissão de todos os jogos, tabelas e stats: tinyurl.com/copa2026aovivo";
   return txt;
 }
 function shareWhats(){
