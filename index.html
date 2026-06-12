@@ -715,15 +715,15 @@ function renderStats(){
   // listas especiais
   const penLinhas = Object.entries(s.pen).sort((a,b) => b[1].c - a[1].c || a[1].p - b[1].p).slice(0,10)
     .map(([k,o],i) => { const p = k.split("|"); return linha((i+1)+"º", flagImg(p[1]), p[0], `${o.c}✅${o.p ? " " + o.p + "❌" : ""}`); }).join("");
-  const rapLinhas = s.rapidos.sort((a,b) => a.v - b.v).slice(0,5)
+  const rapLinhas = s.rapidos.sort((a,b) => a.v - b.v).slice(0,10)
     .map((g,i) => linha(g.min, flagImg(g.code), `${g.nome} <span class="ctx">(${g.jogo})</span>`, "")).join("");
-  const golLinhas = s.goleadas.sort((a,b) => b.v - a.v).slice(0,5)
+  const golLinhas = s.goleadas.sort((a,b) => b.v - a.v).slice(0,10)
     .map((g,i) => linha((i+1)+"º", "", g.lbl, "+" + g.v)).join("");
-  const mgLinhas = s.maisGols.sort((a,b) => b.v - a.v).slice(0,5)
+  const mgLinhas = s.maisGols.sort((a,b) => b.v - a.v).slice(0,10)
     .map((g,i) => linha((i+1)+"º", "", g.lbl, g.v + " gols")).join("");
-  const multiLinhas = s.multi.sort((a,b) => b.n - a.n)
+  const multiLinhas = s.multi.sort((a,b) => b.n - a.n).slice(0,10)
     .map((g,i) => linha((i+1)+"º", flagImg(g.code), `${g.nome} <span class="ctx">(${g.jogo})</span>`, g.n + " gols")).join("");
-  const ogLinhas = s.contra
+  const ogLinhas = s.contra.slice(0,10)
     .map((g,i) => linha("•", flagImg(g.code), `${g.nome} <span class="ctx">(${g.jogo})</span>`, "")).join("");
 
   grid.innerHTML =
