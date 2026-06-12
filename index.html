@@ -187,6 +187,18 @@
   .stat-linha .sn{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .stat-linha b{color:var(--accent2);}
   .stat-vazio{font-size:12px; color:#777; padding:8px 0;}
+  .stat-linha .ctx{color:#888; font-size:11px;}
+  .stat-sub{font-size:11px; color:#999; text-transform:uppercase; letter-spacing:1px; margin:14px 0 6px; font-weight:600;}
+  .painel{grid-column:1 / -1;}
+  .painel-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .kpi{background:#000; border:1px solid var(--cinza2); border-radius:10px; text-align:center; padding:12px 4px;}
+  .kpi b{display:block; font-size:22px; color:var(--accent2); font-weight:700; line-height:1.1;}
+  .kpi span{font-size:10px; color:#888; text-transform:uppercase; letter-spacing:1px;}
+  .faixa{display:flex; align-items:center; gap:8px; font-size:11px; padding:3px 0;}
+  .faixa .fl{width:54px; color:#999; flex-shrink:0;}
+  .faixa .fb{flex:1; background:#000; border-radius:4px; height:10px; overflow:hidden;}
+  .faixa .fb div{height:100%; background:linear-gradient(90deg, var(--accent), #7C4DFF); border-radius:4px; transition:width .4s;}
+  .faixa b{width:20px; text-align:right; color:var(--accent2);}
   .grupos-grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));
     gap:14px; margin-top:20px;
@@ -658,31 +670,75 @@ function renderGrupos(){
   }).join("");
 }
 
-// ===== ABA STATS (artilharia, cartões, gols por seleção) =====
+// ===== ABA STATS =====
 function renderStats(){
   const grid = document.getElementById("statsGrid");
   const s = store.__stats;
-  const temDados = s && (Object.keys(s.gols).length || Object.keys(s.ama).length || Object.keys(s.ver).length || Object.keys(s.sel).length);
+  const temDados = s && (s.golsTot || s.cartTot || s.jogos || Object.keys(s.gols || {}).length);
   if (!temDados){
     grid.innerHTML = '<p class="vazio">Ainda sem estatísticas — elas aparecem aqui conforme os jogos acontecem. ⏳</p>';
     return;
   }
-  const linhaJogador = ([k, v], i) => {
-    const [nome, code] = k.split("|");
-    const flag = code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
-    return `<div class="stat-linha"><span class="pos">${i+1}º</span>${flag}<span class="sn">${nome}</span><b>${v}</b></div>`;
-  };
-  const card = (obj, titulo, vazioTxt) => {
-    const linhas = Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0,10).map(linhaJogador).join("");
-    return `<div class="grupo"><h3>${titulo}</h3>${linhas || `<p class="stat-vazio">${vazioTxt}</p>`}</div>`;
-  };
+  const flagImg = code => code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
+  const linha = (pos, flag, txt, val) => `<div class="stat-linha"><span class="pos">${pos}</span>${flag}<span class="sn">${txt}</span><b>${val}</b></div>`;
+  const card = (titulo, linhas, vazioTxt) => `<div class="grupo"><h3>${titulo}</h3>${linhas || `<p class="stat-vazio">${vazioTxt}</p>`}</div>`;
+  const cardJogadores = (obj, titulo, vazioTxt) => card(titulo,
+    Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0,10).map(([k,v],i) => {
+      const p = k.split("|");
+      return linha((i+1)+"º", flagImg(p[1]), p[0], v);
+    }).join(""), vazioTxt);
+
+  // painel geral + gráfico de faixas de tempo
+  const media = s.jogos ? (s.golsPost / s.jogos).toFixed(2).replace(".", ",") : "–";
+  const fLabels = ["1–15'","16–30'","31–45'+","46–60'","61–75'","76–90'+"];
+  const fMax = Math.max.apply(null, s.faixas.concat([1]));
+  const faixasHTML = s.faixas.map((n, i) =>
+    `<div class="faixa"><span class="fl">${fLabels[i]}</span><div class="fb"><div style="width:${Math.round(n/fMax*100)}%"></div></div><b>${n}</b></div>`).join("");
+  const painel = `<div class="grupo painel"><h3>📈 Torneio</h3>
+    <div class="painel-grid">
+      <div class="kpi"><b>${s.jogos}</b><span>jogos</span></div>
+      <div class="kpi"><b>${s.golsTot}</b><span>gols</span></div>
+      <div class="kpi"><b>${media}</b><span>gols/jogo</span></div>
+      <div class="kpi"><b>${s.cartTot}</b><span>cartões</span></div>
+    </div>
+    <p class="stat-sub">⏱ Quando saem os gols</p>${faixasHTML}</div>`;
+
+  // seleções
   const selLinhas = Object.entries(s.sel).sort((a,b) => b[1]-a[1]).slice(0,10)
-    .map(([code, v], i) => `<div class="stat-linha"><span class="pos">${i+1}º</span><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="sn">${T[code][1]}</span><b>${v}</b></div>`).join("");
+    .map(([c,v],i) => linha((i+1)+"º", flagImg(c), T[c][1], v)).join("");
+  const defLinhas = Object.keys(s.jogosSel)
+    .sort((a,b) => (s.sofridos[a]||0) - (s.sofridos[b]||0) || s.jogosSel[b] - s.jogosSel[a]).slice(0,10)
+    .map((c,i) => linha((i+1)+"º", flagImg(c), T[c][1], `${s.sofridos[c]||0} em ${s.jogosSel[c]}j`)).join("");
+  const discLinhas = Object.entries(s.cartSel).sort((a,b) => (b[1].a+b[1].v) - (a[1].a+a[1].v)).slice(0,10)
+    .map(([c,o],i) => linha((i+1)+"º", flagImg(c), T[c][1], `${o.a}🟨${o.v ? " " + o.v + "🟥" : ""}`)).join("");
+
+  // listas especiais
+  const penLinhas = Object.entries(s.pen).sort((a,b) => b[1].c - a[1].c || a[1].p - b[1].p).slice(0,10)
+    .map(([k,o],i) => { const p = k.split("|"); return linha((i+1)+"º", flagImg(p[1]), p[0], `${o.c}✅${o.p ? " " + o.p + "❌" : ""}`); }).join("");
+  const rapLinhas = s.rapidos.sort((a,b) => a.v - b.v).slice(0,5)
+    .map((g,i) => linha(g.min, flagImg(g.code), `${g.nome} <span class="ctx">(${g.jogo})</span>`, "")).join("");
+  const golLinhas = s.goleadas.sort((a,b) => b.v - a.v).slice(0,5)
+    .map((g,i) => linha((i+1)+"º", "", g.lbl, "+" + g.v)).join("");
+  const mgLinhas = s.maisGols.sort((a,b) => b.v - a.v).slice(0,5)
+    .map((g,i) => linha((i+1)+"º", "", g.lbl, g.v + " gols")).join("");
+  const multiLinhas = s.multi.sort((a,b) => b.n - a.n)
+    .map((g,i) => linha((i+1)+"º", flagImg(g.code), `${g.nome} <span class="ctx">(${g.jogo})</span>`, g.n + " gols")).join("");
+  const ogLinhas = s.contra
+    .map((g,i) => linha("•", flagImg(g.code), `${g.nome} <span class="ctx">(${g.jogo})</span>`, "")).join("");
+
   grid.innerHTML =
-    card(s.gols, "⚽ Artilharia", "Nenhum gol ainda") +
-    card(s.ama, "🟨 Cartões amarelos", "Nenhum cartão ainda") +
-    card(s.ver, "🟥 Cartões vermelhos", "Nenhum vermelho ainda") +
-    `<div class="grupo"><h3>🥅 Gols por seleção</h3>${selLinhas || '<p class="stat-vazio">Nenhum gol ainda</p>'}</div>`;
+    painel +
+    cardJogadores(s.gols, "⚽ Artilharia", "Nenhum gol ainda") +
+    cardJogadores(s.assist, "🅰️ Assistências", "Nenhuma assistência ainda") +
+    card("🥅 Gols por seleção", selLinhas, "Nenhum gol ainda") +
+    card("🛡️ Defesa menos vazada", defLinhas, "Nenhum jogo encerrado ainda") +
+    card("🟨 Disciplina (cartões por seleção)", discLinhas, "Nenhum cartão ainda") +
+    card("🎯 Pênaltis", penLinhas, "Nenhum pênalti ainda") +
+    card("⚡ Gols mais rápidos", rapLinhas, "Nenhum gol ainda") +
+    card("💥 Maiores goleadas", golLinhas, "Nenhuma goleada ainda (diferença de 2+ gols)") +
+    card("🍿 Jogos com mais gols", mgLinhas, "Nenhum jogo encerrado ainda") +
+    (s.multi.length ? card("🔥 Mais gols em um jogo", multiLinhas, "") : "") +
+    (s.contra.length ? card("🤡 Gols contra", ogLinhas, "") : "");
 }
 
 // ===== SINCRONIZAÇÃO AUTOMÁTICA COM A INTERNET (ESPN) =====
@@ -699,8 +755,15 @@ async function atualizar(){
     if (!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     let hits = 0;
-    const agg = {gols:{}, ama:{}, ver:{}, sel:{}};
+    const agg = {
+      gols:{}, ama:{}, ver:{}, sel:{}, assist:{},
+      sofridos:{}, jogosSel:{}, cartSel:{}, pen:{},
+      rapidos:[], multi:[], contra:[], goleadas:[], maisGols:[],
+      faixas:[0,0,0,0,0,0], jogos:0, golsTot:0, golsPost:0, cartTot:0
+    };
     const addP = (obj, nome, code) => { const k = nome + "|" + (code || ""); obj[k] = (obj[k] || 0) + 1; };
+    const addPen = (nome, code, ok) => { const k = nome + "|" + (code || ""); const o = agg.pen[k] = agg.pen[k] || {c:0, p:0}; if (ok) o.c++; else o.p++; };
+    const precisaSumula = [];
     (j.events || []).forEach(ev => {
       const c = ev.competitions && ev.competitions[0];
       if (!c || !c.competitors) return;
@@ -708,29 +771,15 @@ async function atualizar(){
       const away = c.competitors.find(x => x.homeAway === "away");
       const ch = codeFromTeam(home && home.team), ca = codeFromTeam(away && away.team);
       if (!ch || !ca) return;
-      // estatísticas: gols e cartões lance a lance
-      const idMap = {};
-      if (home.team) idMap[String(home.team.id)] = ch;
-      if (away.team) idMap[String(away.team.id)] = ca;
-      (c.details || []).forEach(l => {
-        const ath = (l.athletesInvolved || [])[0];
-        const nome = ath ? ath.displayName : null;
-        const tcode = idMap[String(((ath && ath.team) || l.team || {}).id)];
-        if (l.scoringPlay && !l.shootout){
-          const gcode = idMap[String((l.team || {}).id)];
-          if (gcode) agg.sel[gcode] = (agg.sel[gcode] || 0) + 1;
-          if (nome && !l.ownGoal) addP(agg.gols, nome, tcode);
-        }
-        if (l.yellowCard && nome) addP(agg.ama, nome, tcode);
-        if (l.redCard && nome) addP(agg.ver, nome, tcode);
-      });
       const fx = M.find(m => (m[3]===ch && m[4]===ca) || (m[3]===ca && m[4]===ch));
       if (!fx) return;
       const id = matchId(fx);
       const st = store[id] = store[id] || {};
       const state = ev.status && ev.status.type ? ev.status.type.state : null; // pre | in | post
-      if (state === "in" || state === "post"){
-        const sH = Number(home.score), sA = Number(away.score);
+      const rolouOuRolando = state === "in" || state === "post";
+      let sH = NaN, sA = NaN;
+      if (rolouOuRolando){
+        sH = Number(home.score); sA = Number(away.score);
         if (!isNaN(sH) && !isNaN(sA)){
           if (fx[3] === ch){ st.a = sH; st.b = sA; } else { st.a = sA; st.b = sH; }
         }
@@ -738,7 +787,82 @@ async function atualizar(){
       st.state = state;
       st.det = (ev.status && ev.status.type && state === "in") ? (ev.status.displayClock || ev.status.type.shortDetail || "") : "";
       hits++;
+      if (!rolouOuRolando) return; // estatísticas só de jogos iniciados/encerrados
+      // ----- estatísticas lance a lance -----
+      const idMap = {};
+      if (home.team) idMap[String(home.team.id)] = ch;
+      if (away.team) idMap[String(away.team.id)] = ca;
+      const golMap = {};   // artilheiro -> seleção (pra casar assistências da súmula)
+      const porJog = {};   // gols deste jogo por jogador
+      const lblJogo = `${nomeMsg(ch)} × ${nomeMsg(ca)}`;
+      const lblPlacar = `${nomeMsg(ch)} ${isNaN(sH) ? "" : sH}x${isNaN(sA) ? "" : sA} ${nomeMsg(ca)}`;
+      (c.details || []).forEach(l => {
+        const ath = (l.athletesInvolved || [])[0];
+        const nome = ath ? ath.displayName : null;
+        const tcode = idMap[String(((ath && ath.team) || l.team || {}).id)];
+        const gcode = idMap[String((l.team || {}).id)];
+        const minTxt = (l.clock && l.clock.displayValue) || "";
+        const min = parseInt(minTxt) || Math.round(((l.clock && l.clock.value) || 0) / 60);
+        if (l.scoringPlay && !l.shootout){
+          agg.golsTot++;
+          if (gcode) agg.sel[gcode] = (agg.sel[gcode] || 0) + 1;
+          agg.faixas[min <= 15 ? 0 : min <= 30 ? 1 : min <= 45 ? 2 : min <= 60 ? 3 : min <= 75 ? 4 : 5]++;
+          if (nome && !l.ownGoal){
+            addP(agg.gols, nome, tcode);
+            golMap[nome] = tcode;
+            porJog[nome] = (porJog[nome] || 0) + 1;
+            if (l.penaltyKick) addPen(nome, tcode, true);
+            agg.rapidos.push({v: min, min: minTxt || min + "'", nome, code: tcode, jogo: lblJogo});
+          }
+          if (nome && l.ownGoal) agg.contra.push({nome, code: tcode, jogo: lblJogo});
+        }
+        if (l.penaltyKick && !l.scoringPlay && !l.shootout && nome) addPen(nome, tcode, false);
+        if (l.yellowCard){
+          agg.cartTot++;
+          if (nome) addP(agg.ama, nome, tcode);
+          if (tcode){ const cs = agg.cartSel[tcode] = agg.cartSel[tcode] || {a:0, v:0}; cs.a++; }
+        }
+        if (l.redCard){
+          agg.cartTot++;
+          if (nome) addP(agg.ver, nome, tcode);
+          if (tcode){ const cs = agg.cartSel[tcode] = agg.cartSel[tcode] || {a:0, v:0}; cs.v++; }
+        }
+      });
+      // ----- estatísticas por jogo encerrado -----
+      if (state === "post" && !isNaN(sH) && !isNaN(sA)){
+        agg.jogos++;
+        agg.golsPost += sH + sA;
+        agg.sofridos[ch] = (agg.sofridos[ch] || 0) + sA;
+        agg.sofridos[ca] = (agg.sofridos[ca] || 0) + sH;
+        agg.jogosSel[ch] = (agg.jogosSel[ch] || 0) + 1;
+        agg.jogosSel[ca] = (agg.jogosSel[ca] || 0) + 1;
+        if (Math.abs(sH - sA) >= 2) agg.goleadas.push({lbl: lblPlacar, v: Math.abs(sH - sA)});
+        if (sH + sA >= 1) agg.maisGols.push({lbl: lblPlacar, v: sH + sA});
+        for (const n in porJog) if (porJog[n] >= 2) agg.multi.push({nome: n, code: golMap[n], n: porJog[n], jogo: lblPlacar});
+      }
+      // ----- súmula (assistências): busca se ainda não tem versão final em cache -----
+      const cache = (store.__sum || {})[ev.id];
+      if (!(cache && cache.f)) precisaSumula.push({id: ev.id, golMap, final: state === "post"});
     });
+    // busca até 20 súmulas por ciclo (encerradas ficam em cache pra sempre)
+    store.__sum = store.__sum || {};
+    await Promise.all(precisaSumula.slice(0, 20).map(async x => {
+      try {
+        const rs = await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=" + x.id);
+        if (!rs.ok) return;
+        const js = await rs.json();
+        const asts = [];
+        (js.keyEvents || []).forEach(k => {
+          if (!k.scoringPlay || !/assisted by/i.test(k.text || "")) return;
+          const ps = k.participants || [];
+          const scorer = ps[0] && ps[0].athlete ? ps[0].athlete.displayName : null;
+          const assist = ps[1] && ps[1].athlete ? ps[1].athlete.displayName : null;
+          if (assist) asts.push([assist, (scorer && x.golMap[scorer]) || ""]);
+        });
+        store.__sum[x.id] = {f: x.final ? 1 : 0, a: asts};
+      } catch(e){}
+    }));
+    for (const k in store.__sum) (store.__sum[k].a || []).forEach(p => { const kk = p[0] + "|" + (p[1] || ""); agg.assist[kk] = (agg.assist[kk] || 0) + 1; });
     store.__stats = agg;
     store.__updatedAt = Date.now();
     save(); render(); renderGrupos(); renderStats();
