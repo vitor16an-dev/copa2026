@@ -196,6 +196,8 @@
   .lu-p .jn{color:#777; width:20px; flex-shrink:0; text-align:right;}
   .lu-nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .lu-ic{flex-shrink:0; font-size:11px; letter-spacing:1px;}
+  .in-arrow{color:var(--ok); font-size:10px;}
+  .out-arrow{color:var(--r2); font-size:10px;}
   .lu-sep{font-size:10px; color:#777; text-transform:uppercase; letter-spacing:1px; margin:8px 0 3px; border-top:1px dashed var(--cinza2); padding-top:5px;}
 
   /* ===== abas grupos / stats ===== */
@@ -832,12 +834,12 @@ function plIcons(p){
   if (p.g) s += "⚽".repeat(Math.min(p.g, 5));
   if (p.y) s += "🟨";
   if (p.r) s += "🟥";
-  if (p.out) s += "🔻";
+  if (p.out) s += '<span class="out-arrow">▼</span>';
   return s;
 }
 function luRow(p){
   const entered = p.sin && !p.st;
-  return `<div class="lu-p"><span class="jn">${p.n||""}</span><span class="lu-nm">${entered ? "🔺 " : ""}${p.name}</span><span class="lu-ic">${plIcons(p)}</span></div>`;
+  return `<div class="lu-p"><span class="jn">${p.n||""}</span><span class="lu-nm">${entered ? '<span class="in-arrow">▲</span> ' : ""}${p.name}</span><span class="lu-ic">${plIcons(p)}</span></div>`;
 }
 function luCol(players, code, form){
   const flag = code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
@@ -863,7 +865,7 @@ function infoRender(id){
   const lu = (store.__lu || {})[st.eid];
   if (lu && (lu.h.length || lu.a.length)){
     html += `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf)}${luCol(lu.a, lu.ac, lu.af)}</div>`;
-    html += `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · 🔺 entrou · 🔻 saiu</p>`;
+    html += `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · <span class="in-arrow">▲</span> entrou · <span class="out-arrow">▼</span> saiu</p>`;
   } else if (st.state === "in" || st.state === "post"){
     html += `<div class="dr-row dr-load">👕 carregando escalações...</div>`;
   } else {
