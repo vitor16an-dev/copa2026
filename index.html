@@ -845,11 +845,13 @@ function luCol(players, code, form){
 }
 function infoRender(id){
   const st = store[id] || {};
+  // jogo ainda não sincronizado (aberto antes da 1ª atualização)
+  if (!st.vn && !st.eid) return `<div class="dr-row dr-load">🔄 carregando dados do jogo...</div>`;
   let html = "";
   if (st.vn){
     const cidade = CIDADE_PT[st.vc] || st.vc;
     html += `<div class="dr-row">🏟 <b>${st.vn}</b>${cidade ? " — " + cidade : ""}</div>`;
-  } else html += `<div class="dr-row ctx">🏟 Estádio a confirmar</div>`;
+  }
   const wx = (store.__wx || {})[id];
   if (wx) html += `<div class="dr-row">${wx.e} <b>${wx.t}°C</b> · ${wx.d} · 💨 ${wx.w} km/h <span class="ctx">(previsão p/ o horário do jogo)</span></div>`;
   else if (st.vn && VENUE_COORDS[st.vn]) html += `<div class="dr-row dr-load">🌡 carregando previsão do tempo...</div>`;
@@ -857,23 +859,38 @@ function infoRender(id){
   if (lu && (lu.h.length || lu.a.length)){
     html += `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf)}${luCol(lu.a, lu.ac, lu.af)}</div>`;
     html += `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · 🔺 entrou · 🔻 saiu</p>`;
-  } else
+  } else if (st.state === "in" || st.state === "post"){
+    html += `<div class="dr-row dr-load">👕 carregando escalações...</div>`;
+  } else {
     html += `<div class="dr-row ctx">👕 Escalações saem cerca de 1h antes do apito inicial.</div>`;
+  }
   return html;
 }
 async function infoEnsure(id){
+  // se a página ainda não sincronizou nenhuma vez, sincroniza antes
+  if (!store.__updatedAt && !window.__syncing){
+    window.__syncing = true;
+    await atualizar();
+    window.__syncing = false;
+    if (openDrawers[id] === "info") applyDrawer(id);
+  }
   const st = store[id] || {};
-  let mudou = false;
+  // clima — revela assim que carregar
   const coords = st.vn && VENUE_COORDS[st.vn];
   const wxC = (store.__wx || {})[id];
   const wxStale = !wxC || (st.state !== "post" && Date.now() - (wxC.at || 0) > 1800000);
-  if (coords && wxStale && await fetchWeather(id, coords)) mudou = true;
+  if (coords && wxStale && await fetchWeather(id, coords) && openDrawers[id] === "info") applyDrawer(id);
+  // escalações — revela assim que carregarem
   if (st.eid){
     const luC = (store.__lu || {})[st.eid];
     const luStale = !luC || (st.state === "in" && Date.now() - (luC.at || 0) > 120000);
-    if (luStale && await fetchLineups(st.eid)) mudou = true;
+    if (luStale && await fetchLineups(st.eid) && openDrawers[id] === "info") applyDrawer(id);
+  } else {
+    // jogo ainda sem dados sincronizados: tenta de novo em breve (máx 6 tentativas)
+    window.__infoRetry = window.__infoRetry || {};
+    window.__infoRetry[id] = (window.__infoRetry[id] || 0) + 1;
+    if (window.__infoRetry[id] <= 6) setTimeout(() => { if (openDrawers[id] === "info") infoEnsure(id); }, 2500);
   }
-  if (mudou && openDrawers[id] === "info") applyDrawer(id);
 }
 async function fetchWeather(id, coords){
   const m = findFx(id); if (!m) return false;
