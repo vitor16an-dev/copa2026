@@ -930,16 +930,20 @@ async function fetchLineups(eid){
     const j = await r.json();
     if (!j.rosters || !j.rosters.length) return false;
     // mapa de eventos por id do atleta (gols e cartões)
+    // usa os campos estruturados (scoringPlay / type.type) e NÃO o texto:
+    // "Penalty - Scored" contém "red" e era contado como vermelho por engano
     const ev = {};
     (j.keyEvents || []).forEach(k => {
+      const tp = (k.type && k.type.type) || "";   // ex: yellow-card, red-card, penalty---scored
       const txt = (k.type && k.type.text) || "";
       const ps = k.participants || [];
       const pid = ps[0] && ps[0].athlete ? ps[0].athlete.id : null;
       if (!pid) return;
       ev[pid] = ev[pid] || {g:0, y:0, r:0};
-      if (/goal/i.test(txt) && !/own/i.test(txt)) ev[pid].g++;
-      else if (/yellow/i.test(txt)) ev[pid].y++;
-      else if (/red/i.test(txt)) ev[pid].r++;
+      const ownGoal = /own/i.test(tp) || /own/i.test(txt);
+      if (k.scoringPlay && !k.shootout && !ownGoal) ev[pid].g++;
+      else if (/red-card/.test(tp)) ev[pid].r++;       // inclui 2º amarelo -> vermelho
+      else if (/yellow-card/.test(tp)) ev[pid].y++;
     });
     const parse = ros => {
       const list = (ros.roster || []).filter(p => p.starter || p.subbedIn).slice();
