@@ -133,11 +133,10 @@
 
   .jogo{
     background:var(--cinza1); border:1px solid var(--cinza2); border-radius:12px;
-    padding:12px 14px; margin-bottom:8px;
-    display:grid; grid-template-columns:62px 1fr auto; gap:10px; align-items:center;
-    transition:.15s;
+    padding:12px 14px; margin-bottom:8px; transition:.15s;
   }
-  .jogo.assistido{opacity:.45;}
+  .jogo-top{display:grid; grid-template-columns:62px 1fr; gap:10px; align-items:center;}
+  .jogo.assistido{opacity:.5;}
   .jogo.aovivo{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
   .hora{
     font-family:'Neutral Face','Poppins',sans-serif; font-weight:700;
@@ -158,26 +157,43 @@
   .placar:focus{border-color:var(--accent); outline:none;}
   .placar[readonly]{border-color:var(--accent); color:#fff; background:var(--cinza2);}
 
-  .lado{display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
-  .canais{display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; max-width:170px;}
+  /* linha de ações discretas do card */
+  .jogo-acoes{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
+  .mini{
+    background:none; border:1px solid var(--cinza2); color:#aaa; border-radius:8px;
+    font-size:11.5px; padding:5px 11px; cursor:pointer; font-family:'Poppins',sans-serif;
+    transition:.15s; display:inline-flex; align-items:center; gap:5px;
+  }
+  .mini:hover{border-color:var(--accent); color:var(--accent);}
+  .mini.on{border-color:var(--accent); color:var(--accent); background:rgba(179,136,255,.08);}
+  .mini.vac{margin-left:auto;}
+  .jogo.assistido .mini.vac{border-color:var(--accent); color:var(--accent);}
+  /* gaveta (onde assistir / info) */
+  .drawer{display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--cinza2); animation:slide .2s ease;}
+  @keyframes slide{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+  .canais{display:flex; flex-wrap:wrap; gap:6px;}
   .badge{
-    font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px;
+    font-size:11px; font-weight:600; padding:4px 11px; border-radius:999px;
     text-transform:uppercase; letter-spacing:.5px; color:#000;
     text-decoration:none; display:inline-block;
   }
   a.badge{cursor:pointer; transition:.15s;}
-  a.badge:hover{transform:scale(1.08); filter:brightness(1.15); box-shadow:0 0 8px rgba(255,255,255,.25);}
+  a.badge:hover{transform:scale(1.06); filter:brightness(1.15); box-shadow:0 0 8px rgba(255,255,255,.25);}
   .b-caze{background:#FFCA0A;}
   .b-globo{background:#3FA9F5;}
   .b-sbt{background:#3DDC84;}
   .b-ge{background:#06AA48; color:#fff;}
   .b-tbd{background:var(--cinza2); color:#bbb;}
-  .check{
-    background:none; border:1px solid var(--cinza2); color:#888; border-radius:8px;
-    font-size:11px; padding:4px 10px; cursor:pointer; font-family:'Poppins',sans-serif;
-  }
-  .check:hover{border-color:var(--accent); color:var(--accent);}
-  .jogo.assistido .check{border-color:var(--accent); color:var(--accent);}
+  .dr-row{font-size:13px; color:#ddd; margin:5px 0; display:flex; align-items:center; gap:7px; flex-wrap:wrap;}
+  .dr-row b{color:#fff; font-weight:600;}
+  .dr-row .ctx{color:#888; font-size:11px;}
+  .dr-load{font-size:12px; color:#888; padding:4px 0;}
+  .dr-lineup{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;}
+  .lu-col h5{font-size:12px; color:var(--accent2); font-weight:600; margin-bottom:5px; display:flex; align-items:center; gap:5px;}
+  .lu-col h5 img{width:18px; border-radius:2px;}
+  .lu-col .form{color:#888; font-weight:400; font-size:10px;}
+  .lu-p{font-size:12px; color:#ccc; padding:2px 0; display:flex; gap:7px;}
+  .lu-p .jn{color:#777; width:20px; flex-shrink:0; text-align:right;}
 
   /* ===== abas grupos / stats ===== */
   #abaGrupos, #abaStats{display:none;}
@@ -250,10 +266,7 @@
   footer b{color:var(--accent);}
 
   @media (max-width:520px){
-    .jogo{grid-template-columns:54px 1fr;}
-    .lado{grid-column:1 / -1; flex-direction:row; justify-content:space-between; align-items:center; gap:8px;}
-    /* badges em linha única, quebrando só quando não couber */
-    .canais{justify-content:flex-start; max-width:none; flex:1;}
+    .jogo-top{grid-template-columns:54px 1fr;}
     /* botões de compartilhar/copiar com o mesmo tamanho, de ponta a ponta */
     .acoes .btn{flex:1; text-align:center; padding:11px 6px; white-space:nowrap;}
   }
@@ -484,6 +497,33 @@ try { store = JSON.parse(localStorage.getItem("copa2026") || "{}"); } catch(e){ 
 function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
 
 let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
+let openDrawers = {}; // id -> "tv" | "info" (gavetas abertas, em memória)
+
+// coordenadas fixas dos 16 estádios-sede (geocoding por nome é furado)
+const VENUE_COORDS = {
+  "AT&T Stadium":[32.7473,-97.0945], "BC Place":[49.2768,-123.1119], "BMO Field":[43.6332,-79.4185],
+  "Estadio Akron":[20.6819,-103.4625], "Estadio Banorte":[19.3029,-99.1505], "Estadio BBVA":[25.6694,-100.2444],
+  "GEHA Field at Arrowhead Stadium":[39.0489,-94.4839], "Gillette Stadium":[42.0909,-71.2643],
+  "Hard Rock Stadium":[25.9580,-80.2389], "Levi's Stadium":[37.4030,-121.9700],
+  "Lincoln Financial Field":[39.9008,-75.1675], "Lumen Field":[47.5952,-122.3316],
+  "Mercedes-Benz Stadium":[33.7554,-84.4008], "MetLife Stadium":[40.8135,-74.0745],
+  "NRG Stadium":[29.6847,-95.4107], "SoFi Stadium":[33.9535,-118.3392]
+};
+const CIDADE_PT = {"Mexico City":"Cidade do México","Santa Clara, California":"Santa Clara, CA"};
+// código WMO -> [emoji, descrição]
+function wmo(c){
+  if (c===0) return ["☀️","Céu limpo"];
+  if (c<=2) return ["🌤","Parcialmente nublado"];
+  if (c===3) return ["☁️","Nublado"];
+  if (c<=48) return ["🌫","Névoa"];
+  if (c<=55) return ["🌦","Garoa"];
+  if (c<=65) return ["🌧","Chuva"];
+  if (c<=67) return ["🌧","Chuva congelante"];
+  if (c<=77) return ["🌨","Neve"];
+  if (c<=82) return ["🌦","Pancadas de chuva"];
+  if (c<=86) return ["🌨","Pancadas de neve"];
+  return ["⛈","Tempestade"];
+}
 
 // horários da base estão em Brasília (UTC-3, sem horário de verão) -> ancora no instante UTC real
 function matchDate(m){
@@ -570,6 +610,13 @@ function render(){
     lista.innerHTML = html;
   }
   updateProgress();
+  // reabre gavetas que estavam abertas antes do refresh
+  for (const id in openDrawers){
+    if (openDrawers[id] && document.getElementById("dr-" + id)){
+      applyDrawer(id);
+      if (openDrawers[id] === "info") infoEnsure(id);
+    }
+  }
   if (abaAtual === "grupos") renderGrupos();
 }
 
@@ -593,23 +640,25 @@ function jogoHTML(m, agora){
   const ro = (st.state === "in" || st.state === "post") ? "readonly" : "";
   const [ca, na] = T[m[3]], [cb, nb] = T[m[4]];
   return `<div class="jogo ${st.w ? "assistido" : ""} ${sj.vivo ? "aovivo" : ""}" id="${id}">
-    <div class="hora">${horaLocal(dt)}${shiftDia(dt, m[0])}${sj.tag}</div>
-    <div class="times">
-      <div class="linha-time">
-        <img src="https://flagcdn.com/w40/${ca}.png" alt="${na}" loading="lazy"><span class="nome">${na}</span>
-        <input class="placar" type="number" min="0" max="99" placeholder="-" value="${st.a ?? ""}" ${ro} onchange="setPlacar('${id}','a',this.value)">
-      </div>
-      <div class="linha-time">
-        <img src="https://flagcdn.com/w40/${cb}.png" alt="${nb}" loading="lazy"><span class="nome">${nb}</span>
-        <input class="placar" type="number" min="0" max="99" placeholder="-" value="${st.b ?? ""}" ${ro} onchange="setPlacar('${id}','b',this.value)">
+    <div class="jogo-top">
+      <div class="hora">${horaLocal(dt)}${shiftDia(dt, m[0])}${sj.tag}</div>
+      <div class="times">
+        <div class="linha-time">
+          <img src="https://flagcdn.com/w40/${ca}.png" alt="${na}" loading="lazy"><span class="nome">${na}</span>
+          <input class="placar" type="number" min="0" max="99" placeholder="-" value="${st.a ?? ""}" ${ro} onchange="setPlacar('${id}','a',this.value)">
+        </div>
+        <div class="linha-time">
+          <img src="https://flagcdn.com/w40/${cb}.png" alt="${nb}" loading="lazy"><span class="nome">${nb}</span>
+          <input class="placar" type="number" min="0" max="99" placeholder="-" value="${st.b ?? ""}" ${ro} onchange="setPlacar('${id}','b',this.value)">
+        </div>
       </div>
     </div>
-    <div class="lado">
-      <div class="canais">${m[5].map(c => CANAL_URL[c]
-        ? `<a class="badge b-${c}" href="${CANAL_URL[c]}" target="_blank" rel="noopener" title="${CANAL_DICA[c]}">▶ ${CANAL_NOME[c]}</a>`
-        : `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
-      <button class="check" onclick="toggleW('${id}')">${st.w ? "✓ Assisti" : "Marcar visto"}</button>
+    <div class="jogo-acoes">
+      <button class="mini ${openDrawers[id]==='tv'?'on':''}" onclick="drawer('${id}','tv')">📺 Onde assistir</button>
+      <button class="mini ${openDrawers[id]==='info'?'on':''}" onclick="drawer('${id}','info')">ℹ️ Info do jogo</button>
+      <button class="mini vac" onclick="toggleW('${id}')">${st.w ? "✓ Assisti" : "Marcar visto"}</button>
     </div>
+    <div class="drawer" id="dr-${id}"></div>
   </div>`;
 }
 
@@ -741,6 +790,117 @@ function renderStats(){
     (s.contra.length ? card("🤡 Gols contra", ogLinhas, "") : "");
 }
 
+// ===== GAVETAS DO CARD: ONDE ASSISTIR / INFO =====
+function findFx(id){ return M.find(m => matchId(m) === id); }
+
+function drawer(id, tipo){
+  openDrawers[id] = (openDrawers[id] === tipo) ? null : tipo;
+  applyDrawer(id);
+  const card = document.getElementById(id);
+  if (card){
+    const btns = card.querySelectorAll(".jogo-acoes .mini");
+    if (btns[0]) btns[0].classList.toggle("on", openDrawers[id] === "tv");
+    if (btns[1]) btns[1].classList.toggle("on", openDrawers[id] === "info");
+  }
+  if (openDrawers[id] === "info") infoEnsure(id);
+}
+function applyDrawer(id){
+  const el = document.getElementById("dr-" + id);
+  if (!el) return;
+  const tipo = openDrawers[id];
+  if (!tipo){ el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "block";
+  el.innerHTML = tipo === "tv" ? tvHTML(id) : infoRender(id);
+}
+function tvHTML(id){
+  const m = findFx(id); if (!m) return "";
+  return `<div class="canais">${m[5].map(c => CANAL_URL[c]
+    ? `<a class="badge b-${c}" href="${CANAL_URL[c]}" target="_blank" rel="noopener" title="${CANAL_DICA[c]}">▶ ${CANAL_NOME[c]}</a>`
+    : `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
+    <p class="dr-row ctx">Toque no canal para abrir a transmissão ao vivo.</p>`;
+}
+function luCol(players, code, form){
+  const flag = code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
+  const nome = code && T[code] ? T[code][1] : "Time";
+  return `<div class="lu-col"><h5>${flag}${nome}${form ? ` <span class="form">${form}</span>` : ""}</h5>${
+    players.map(p => `<div class="lu-p"><span class="jn">${p.n||""}</span>${p.name}</div>`).join("")}</div>`;
+}
+function infoRender(id){
+  const st = store[id] || {};
+  let html = "";
+  if (st.vn){
+    const cidade = CIDADE_PT[st.vc] || st.vc;
+    html += `<div class="dr-row">🏟 <b>${st.vn}</b>${cidade ? " — " + cidade : ""}</div>`;
+  } else html += `<div class="dr-row ctx">🏟 Estádio a confirmar</div>`;
+  const wx = (store.__wx || {})[id];
+  if (wx) html += `<div class="dr-row">${wx.e} <b>${wx.t}°C</b> · ${wx.d} · 💨 ${wx.w} km/h <span class="ctx">(previsão p/ o horário do jogo)</span></div>`;
+  else if (st.vn && VENUE_COORDS[st.vn]) html += `<div class="dr-row dr-load">🌡 carregando previsão do tempo...</div>`;
+  const lu = (store.__lu || {})[st.eid];
+  if (lu && (lu.h.length || lu.a.length))
+    html += `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf)}${luCol(lu.a, lu.ac, lu.af)}</div>`;
+  else
+    html += `<div class="dr-row ctx">👕 Escalações saem cerca de 1h antes do apito inicial.</div>`;
+  return html;
+}
+async function infoEnsure(id){
+  const st = store[id] || {};
+  let mudou = false;
+  const coords = st.vn && VENUE_COORDS[st.vn];
+  const wxC = (store.__wx || {})[id];
+  const wxStale = !wxC || (st.state !== "post" && Date.now() - (wxC.at || 0) > 1800000);
+  if (coords && wxStale && await fetchWeather(id, coords)) mudou = true;
+  if (st.eid){
+    const luC = (store.__lu || {})[st.eid];
+    const luStale = !luC || (st.state === "in" && Date.now() - (luC.at || 0) > 120000);
+    if (luStale && await fetchLineups(st.eid)) mudou = true;
+  }
+  if (mudou && openDrawers[id] === "info") applyDrawer(id);
+}
+async function fetchWeather(id, coords){
+  const m = findFx(id); if (!m) return false;
+  const dt = matchDate(m);
+  const hourISO = dt.toISOString().slice(0,13) + ":00";
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords[0]}&longitude=${coords[1]}&hourly=temperature_2m,weather_code,wind_speed_10m&timezone=GMT&past_days=5&forecast_days=16`;
+    const r = await fetch(url); if (!r.ok) return false;
+    const j = await r.json();
+    const times = (j.hourly && j.hourly.time) || [];
+    let idx = times.indexOf(hourISO);
+    if (idx < 0){
+      let bd = Infinity; const target = dt.getTime();
+      times.forEach((t, k) => { const d = Math.abs(new Date(t + "Z").getTime() - target); if (d < bd){ bd = d; idx = k; } });
+    }
+    if (idx < 0) return false;
+    const wd = wmo(j.hourly.weather_code[idx]);
+    store.__wx = store.__wx || {};
+    store.__wx[id] = {t: Math.round(j.hourly.temperature_2m[idx]), w: Math.round(j.hourly.wind_speed_10m[idx]), e: wd[0], d: wd[1], at: Date.now()};
+    save(); return true;
+  } catch(e){ return false; }
+}
+async function fetchLineups(eid){
+  try {
+    const r = await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=" + eid);
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (!j.rosters || !j.rosters.length) return false;
+    const parse = ros => {
+      const starters = (ros.roster || []).filter(p => p.starter).sort((a,b) => (a.formationPlace||99) - (b.formationPlace||99));
+      return {
+        code: codeFromTeam(ros.team),
+        players: starters.map(p => ({n: p.jersey, name: p.athlete.displayName})),
+        form: (ros.formation && (ros.formation.name || ros.formation.text)) || ""
+      };
+    };
+    const home = j.rosters.find(x => x.homeAway === "home") || j.rosters[0];
+    const away = j.rosters.find(x => x.homeAway === "away") || j.rosters[1];
+    const ph = parse(home), pa = parse(away);
+    if (!ph.players.length && !pa.players.length) return false;
+    store.__lu = store.__lu || {};
+    store.__lu[eid] = {h: ph.players, hc: ph.code, hf: ph.form, a: pa.players, ac: pa.code, af: pa.form, at: Date.now()};
+    save(); return true;
+  } catch(e){ return false; }
+}
+
 // ===== SINCRONIZAÇÃO AUTOMÁTICA COM A INTERNET (ESPN) =====
 function codeFromTeam(team){
   if (!team) return null;
@@ -786,6 +946,8 @@ async function atualizar(){
       }
       st.state = state;
       st.det = (ev.status && ev.status.type && state === "in") ? (ev.status.displayClock || ev.status.type.shortDetail || "") : "";
+      st.eid = ev.id;
+      if (c.venue){ st.vn = c.venue.fullName; st.vc = (c.venue.address && c.venue.address.city) || ""; }
       hits++;
       if (!rolouOuRolando) return; // estatísticas só de jogos iniciados/encerrados
       // ----- estatísticas lance a lance -----
