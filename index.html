@@ -272,6 +272,11 @@
     .jogo-top{grid-template-columns:54px 1fr;}
     /* botões de compartilhar/copiar com o mesmo tamanho, de ponta a ponta */
     .acoes .btn{flex:1; text-align:center; padding:11px 6px; white-space:nowrap;}
+    /* escalações: empilha os times (lado a lado fica apertado no celular) */
+    .dr-lineup{grid-template-columns:1fr; gap:6px;}
+    .lu-col + .lu-col{margin-top:10px; border-top:1px solid var(--cinza2); padding-top:10px;}
+    .lu-p{font-size:13px; padding:3px 0;}
+    .lu-ic{font-size:12px;}
   }
 </style>
 </head>
