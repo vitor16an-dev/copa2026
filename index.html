@@ -274,6 +274,9 @@
     .jogo-top{grid-template-columns:64px 1fr;}
     /* botões de compartilhar/copiar com o mesmo tamanho, de ponta a ponta */
     .acoes .btn{flex:1; text-align:center; padding:11px 6px; white-space:nowrap;}
+    /* ações do card numa linha só, com Visto? alinhado à direita */
+    .jogo-acoes{flex-wrap:nowrap;}
+    .mini{padding:6px 9px; font-size:11px;}
     /* escalações: empilha os times (lado a lado fica apertado no celular) */
     .dr-lineup{grid-template-columns:1fr; gap:6px;}
     .lu-col + .lu-col{margin-top:10px; border-top:1px solid var(--cinza2); padding-top:10px;}
@@ -666,7 +669,7 @@ function jogoHTML(m, agora){
     <div class="jogo-acoes">
       <button class="mini ${openDrawers[id]==='tv'?'on':''}" onclick="drawer('${id}','tv')">📺 Onde assistir</button>
       <button class="mini ${openDrawers[id]==='info'?'on':''}" onclick="drawer('${id}','info')">ℹ️ Info do jogo</button>
-      <button class="mini vac" onclick="toggleW('${id}')">${st.w ? "✓ Assisti" : "Marcar visto"}</button>
+      <button class="mini vac" onclick="toggleW('${id}')">${st.w ? "✓ Visto!" : "Visto?"}</button>
     </div>
     <div class="drawer" id="dr-${id}"></div>
   </div>`;
