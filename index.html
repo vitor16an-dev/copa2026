@@ -508,6 +508,8 @@ const ESPN_MAP = {
 let store = {};
 try { store = JSON.parse(localStorage.getItem("copa2026") || "{}"); } catch(e){ store = {}; }
 function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
+// invalida cache de escalações gravado com o bug do gol de pênalti (contava como vermelho)
+if (store.__luVer !== 2){ store.__lu = {}; store.__luVer = 2; save(); }
 
 let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
 let openDrawers = {}; // id -> "tv" | "info" (gavetas abertas, em memória)
