@@ -198,6 +198,20 @@
   .lu-ic{flex-shrink:0; font-size:11px; letter-spacing:1px;}
   .in-arrow{color:var(--ok); font-size:10px;}
   .out-arrow{color:var(--r2); font-size:10px;}
+  /* sub-abas e estatísticas da partida */
+  .info-tabs{display:flex; gap:6px; margin:12px 0 10px;}
+  .info-tab{flex:1; background:none; border:1px solid var(--cinza2); color:#aaa; border-radius:8px; padding:7px 4px; font-size:11.5px; cursor:pointer; font-family:'Poppins',sans-serif; transition:.15s;}
+  .info-tab.on{border-color:var(--accent); color:var(--accent); background:rgba(179,136,255,.08);}
+  .ms-head{display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; color:#ddd; margin-bottom:10px; font-weight:600;}
+  .ms-head img{width:20px; height:14px; object-fit:cover; border-radius:2px;}
+  .ms-head .ms-x{color:#777; font-weight:400;}
+  .ms-row{margin:9px 0;}
+  .ms-vals{display:flex; justify-content:space-between; align-items:center; font-size:12px;}
+  .ms-vals b{color:#fff; font-weight:600; min-width:40px;}
+  .ms-vals b:last-child{text-align:right;}
+  .ms-vals span{font-size:11px; color:#999;}
+  .ms-bar{display:flex; height:6px; border-radius:3px; overflow:hidden; background:#444; margin-top:4px;}
+  .ms-h{background:var(--accent); height:100%; transition:width .4s;}
   .lu-sep{font-size:10px; color:#777; text-transform:uppercase; letter-spacing:1px; margin:8px 0 3px; border-top:1px dashed var(--cinza2); padding-top:5px;}
 
   /* ===== abas grupos / stats ===== */
@@ -509,10 +523,11 @@ let store = {};
 try { store = JSON.parse(localStorage.getItem("copa2026") || "{}"); } catch(e){ store = {}; }
 function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
 // invalida cache de escalações gravado com o bug do gol de pênalti (contava como vermelho)
-if (store.__luVer !== 2){ store.__lu = {}; store.__luVer = 2; save(); }
+if (store.__luVer !== 3){ store.__lu = {}; store.__luVer = 3; save(); }
 
 let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
 let openDrawers = {}; // id -> "tv" | "info" (gavetas abertas, em memória)
+let openInfoTab = {}; // id -> "lineup" | "stats" (sub-aba dentro do Info)
 
 // coordenadas fixas dos 16 estádios-sede (geocoding por nome é furado)
 const VENUE_COORDS = {
@@ -867,16 +882,46 @@ function infoRender(id){
   const wx = (store.__wx || {})[id];
   if (wx) html += `<div class="dr-row">${wx.e} <b>${wx.t}°C</b> · ${wx.d} · 💨 ${wx.w} km/h <span class="ctx">(previsão p/ o horário do jogo)</span></div>`;
   else if (st.vn && VENUE_COORDS[st.vn]) html += `<div class="dr-row dr-load">🌡 carregando previsão do tempo...</div>`;
-  const lu = (store.__lu || {})[st.eid];
-  if (lu && (lu.h.length || lu.a.length)){
-    html += `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf)}${luCol(lu.a, lu.ac, lu.af)}</div>`;
-    html += `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · <span class="in-arrow">▲</span> entrou · <span class="out-arrow">▼</span> saiu</p>`;
-  } else if (st.state === "in" || st.state === "post"){
-    html += `<div class="dr-row dr-load">👕 carregando escalações...</div>`;
-  } else {
-    html += `<div class="dr-row ctx">👕 Escalações saem cerca de 1h antes do apito inicial.</div>`;
-  }
+  // sub-abas: escalações / estatísticas
+  const tab = openInfoTab[id] || "lineup";
+  html += `<div class="info-tabs">
+    <button class="info-tab ${tab==='lineup'?'on':''}" onclick="infoTab('${id}','lineup')">👕 Escalações</button>
+    <button class="info-tab ${tab==='stats'?'on':''}" onclick="infoTab('${id}','stats')">📊 Estatísticas</button>
+  </div>`;
+  html += tab === "stats" ? statsMatchHTML(st) : lineupHTML(st);
   return html;
+}
+function infoTab(id, tab){ openInfoTab[id] = tab; applyDrawer(id); if (tab === "stats") infoEnsure(id); }
+function lineupHTML(st){
+  const lu = (store.__lu || {})[st.eid];
+  if (lu && (lu.h.length || lu.a.length))
+    return `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf)}${luCol(lu.a, lu.ac, lu.af)}</div>` +
+      `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · <span class="in-arrow">▲</span> entrou · <span class="out-arrow">▼</span> saiu</p>`;
+  if (st.state === "in" || st.state === "post") return `<div class="dr-row dr-load">👕 carregando escalações...</div>`;
+  return `<div class="dr-row ctx">👕 Escalações saem cerca de 1h antes do apito inicial.</div>`;
+}
+function statsMatchHTML(st){
+  const lu = (store.__lu || {})[st.eid];
+  const bs = lu && lu.bs;
+  if (!bs || !Object.keys(bs.h || {}).length){
+    if (st.state === "in" || st.state === "post") return `<div class="dr-row dr-load">📊 carregando estatísticas...</div>`;
+    return `<div class="dr-row ctx">📊 As estatísticas aparecem com o jogo em andamento.</div>`;
+  }
+  const fl = c => c && T[c] ? `<img src="https://flagcdn.com/w40/${T[c][0]}.png" alt="">` : "";
+  const STATS = [
+    ["possessionPct","Posse de bola","%"], ["totalShots","Finalizações",""],
+    ["shotsOnTarget","No alvo",""], ["wonCorners","Escanteios",""],
+    ["foulsCommitted","Faltas",""], ["offsides","Impedimentos",""], ["saves","Defesas",""]
+  ];
+  let rows = `<div class="ms-head">${fl(lu.hc)}<span>${lu.hc&&T[lu.hc]?T[lu.hc][1]:""}</span><span class="ms-x">x</span><span>${lu.ac&&T[lu.ac]?T[lu.ac][1]:""}</span>${fl(lu.ac)}</div>`;
+  STATS.forEach(s => {
+    const k = s[0], hRaw = bs.h[k], aRaw = bs.a[k];
+    if (hRaw == null && aRaw == null) return;
+    const h = parseFloat(hRaw) || 0, a = parseFloat(aRaw) || 0;
+    const hp = Math.round(h / (h + a || 1) * 100);
+    rows += `<div class="ms-row"><div class="ms-vals"><b>${hRaw != null ? hRaw + s[2] : "-"}</b><span>${s[1]}</span><b>${aRaw != null ? aRaw + s[2] : "-"}</b></div><div class="ms-bar"><div class="ms-h" style="width:${hp}%"></div></div></div>`;
+  });
+  return `<div class="match-stats">${rows}</div>`;
 }
 async function infoEnsure(id){
   // se a página ainda não sincronizou nenhuma vez, sincroniza antes
@@ -965,9 +1010,17 @@ async function fetchLineups(eid){
     const home = j.rosters.find(x => x.homeAway === "home") || j.rosters[0];
     const away = j.rosters.find(x => x.homeAway === "away") || j.rosters[1];
     const ph = parse(home), pa = parse(away);
-    if (!ph.players.length && !pa.players.length) return false;
+    // estatísticas da partida (boxscore) — mesma súmula, sem requisição extra
+    let bs = null;
+    if (j.boxscore && j.boxscore.teams && j.boxscore.teams.length === 2){
+      const byId = {};
+      j.boxscore.teams.forEach(t => { const o = {}; (t.statistics || []).forEach(s => { o[s.name] = s.displayValue; }); byId[String((t.team||{}).id)] = o; });
+      const hb = byId[String((home.team||{}).id)] || {}, ab = byId[String((away.team||{}).id)] || {};
+      if (Object.keys(hb).length || Object.keys(ab).length) bs = {h: hb, a: ab};
+    }
+    if (!ph.players.length && !pa.players.length && !bs) return false;
     store.__lu = store.__lu || {};
-    store.__lu[eid] = {h: ph.players, hc: ph.code, hf: ph.form, a: pa.players, ac: pa.code, af: pa.form, at: Date.now()};
+    store.__lu[eid] = {h: ph.players, hc: ph.code, hf: ph.form, a: pa.players, ac: pa.code, af: pa.form, bs: bs, at: Date.now()};
     save(); return true;
   } catch(e){ return false; }
 }
