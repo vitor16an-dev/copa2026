@@ -166,6 +166,9 @@
   }
   .mini:hover{border-color:var(--accent); color:var(--accent);}
   .mini.on{border-color:var(--accent); color:var(--accent); background:rgba(179,136,255,.08);}
+  a.mini{text-decoration:none;}
+  .mini-hl{border-color:#FF5252; color:#FF7070;}
+  .mini-hl:hover{border-color:#FF5252; color:#FF5252; background:rgba(255,82,82,.1);}
   .mini.vac{margin-left:auto;}
   .jogo.assistido .mini.vac{border-color:var(--accent); color:var(--accent);}
   /* gaveta (onde assistir / info) */
@@ -188,6 +191,12 @@
   .dr-row b{color:#fff; font-weight:600;}
   .dr-row .ctx{color:#888; font-size:11px;}
   .dr-load{font-size:12px; color:#888; padding:4px 0;}
+  /* linha do tempo dos gols */
+  .gols-tl{font-size:12px; color:#ddd; margin:7px 0; display:flex; flex-wrap:wrap; align-items:center; gap:5px 10px;}
+  .gols-tl .gt-lbl{color:var(--accent2); font-weight:600;}
+  .gols-tl .gt-item{display:inline-flex; align-items:center; gap:5px; white-space:nowrap;}
+  .gols-tl .gt-item img{width:18px; height:12px; object-fit:cover; border-radius:2px;}
+  .gols-tl .gt-item b{color:var(--accent2);}
   .dr-lineup{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;}
   .lu-col h5{font-size:12px; color:var(--accent2); font-weight:600; margin-bottom:5px; display:flex; align-items:center; gap:5px;}
   .lu-col h5 img{width:18px; height:12px; object-fit:cover; border-radius:2px;}
@@ -304,7 +313,7 @@
     /* botões de compartilhar/copiar com o mesmo tamanho, de ponta a ponta */
     .acoes .btn{flex:1; text-align:center; padding:11px 6px; white-space:nowrap;}
     /* ações do card numa linha só, com Visto? alinhado à direita */
-    .jogo-acoes{flex-wrap:nowrap;}
+    .jogo-acoes{flex-wrap:wrap;}
     .mini{padding:6px 9px; font-size:11px;}
     /* escalações: empilha os times (lado a lado fica apertado no celular) */
     .dr-lineup{grid-template-columns:1fr; gap:6px;}
@@ -514,6 +523,8 @@ const CANAL_DICA = {
   sbt:"Assistir no SBT ao vivo",
   ge:"Assistir no Globoplay (GE TV)"
 };
+// playlist de melhores momentos (YouTube) — link único; a pessoa acha o jogo lá
+const HIGHLIGHTS_URL = "https://www.youtube.com/playlist?list=PLsFWLnYCEXEVNzCnkQE-xOuMc8oLxSleC";
 const WD = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const DUR_MS = 2 * 60 * 60 * 1000;
 const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260627&limit=100";
@@ -539,7 +550,7 @@ let store = {};
 try { store = JSON.parse(localStorage.getItem("copa2026") || "{}"); } catch(e){ store = {}; }
 function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
 // invalida cache de escalações gravado com o bug do gol de pênalti (contava como vermelho)
-if (store.__luVer !== 5){ store.__lu = {}; store.__luVer = 5; save(); }
+if (store.__luVer !== 6){ store.__lu = {}; store.__luVer = 6; save(); }
 
 let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
 let openDrawers = {}; // id -> "tv" | "info" (gavetas abertas, em memória)
@@ -732,6 +743,7 @@ function jogoHTML(m, agora){
     <div class="jogo-acoes">
       <button class="mini ${openDrawers[id]==='tv'?'on':''}" onclick="drawer('${id}','tv')">📺 Onde assistir</button>
       <button class="mini ${openDrawers[id]==='info'?'on':''}" onclick="drawer('${id}','info')">ℹ️ Info do jogo</button>
+      ${sj.fim ? `<a class="mini mini-hl" href="${HIGHLIGHTS_URL}" target="_blank" rel="noopener">▶️ Melhores momentos</a>` : ""}
       <button class="mini vac" onclick="toggleW('${id}')">${st.w ? "✓ Visto!" : "Visto?"}</button>
     </div>
     <div class="drawer" id="dr-${id}"></div>
@@ -962,6 +974,13 @@ function infoRender(id){
   else if (st.vn && VENUE_COORDS[st.vn]) html += `<div class="dr-row dr-load">🌡 carregando previsão do tempo...</div>`;
   if (lu.att) html += `<div class="dr-row">👥 Público: <b>${lu.att.toLocaleString("pt-BR")}</b></div>`;
   if (lu.ref) html += `<div class="dr-row">🧑‍⚖️ Árbitro: <b>${lu.ref}</b></div>`;
+  // linha do tempo dos gols (minuto + autor)
+  if (lu.gols && lu.gols.length){
+    const tags = g => (g.pen ? " (pên)" : "") + (g.og ? " (contra)" : "");
+    html += `<div class="gols-tl"><span class="gt-lbl">⚽ Gols:</span> ${lu.gols.map(g =>
+      `<span class="gt-item">${g.m ? `<b>${g.m}</b> ` : ""}${g.code && T[g.code] ? `<img src="https://flagcdn.com/w40/${T[g.code][0]}.png" alt="">` : ""}${g.name}${tags(g)}</span>`
+    ).join("")}</div>`;
+  }
   // sub-abas — jogo futuro abre na Prévia; ao vivo/encerrado abre nas Escalações
   const def = (st.state === "in" || st.state === "post") ? "lineup" : "previa";
   const tab = openInfoTab[id] || def;
@@ -1093,6 +1112,7 @@ async function fetchLineups(eid){
     // usa os campos estruturados (scoringPlay / type.type) e NÃO o texto:
     // "Penalty - Scored" contém "red" e era contado como vermelho por engano
     const ev = {};
+    const golsRaw = []; // gols com minuto (para a linha do tempo)
     (j.keyEvents || []).forEach(k => {
       const tp = (k.type && k.type.type) || "";   // ex: yellow-card, red-card, penalty---scored
       const txt = (k.type && k.type.text) || "";
@@ -1101,7 +1121,15 @@ async function fetchLineups(eid){
       if (!pid) return;
       ev[pid] = ev[pid] || {g:0, y:0, r:0};
       const ownGoal = /own/i.test(tp) || /own/i.test(txt);
-      if (k.scoringPlay && !k.shootout && !ownGoal) ev[pid].g++;
+      if (k.scoringPlay && !k.shootout){
+        golsRaw.push({
+          m: (k.clock && k.clock.displayValue) || "",
+          tid: String((k.team || {}).id),
+          name: ps[0].athlete.displayName,
+          pen: /penalty/i.test(tp), og: ownGoal
+        });
+        if (!ownGoal) ev[pid].g++;
+      }
       else if (/red-card/.test(tp)) ev[pid].r++;       // inclui 2º amarelo -> vermelho
       else if (/yellow-card/.test(tp)) ev[pid].y++;
     });
@@ -1161,11 +1189,16 @@ async function fetchLineups(eid){
         .map(e => ({y: String(e.gameDate||"").slice(0,4), hn: nm[String(e.homeTeamId)]||"?", an: nm[String(e.awayTeamId)]||"?",
                     hs: e.homeTeamScore, as: e.awayTeamScore, lg: e.leagueAbbreviation || e.leagueName || ""}));
     }
-    const temConteudo = ph.players.length || pa.players.length || bs || form || (h2h && h2h.length);
+    // linha do tempo dos gols (minuto + autor + seleção)
+    const idToCode = {};
+    if (home.team) idToCode[String(home.team.id)] = ph.code;
+    if (away.team) idToCode[String(away.team.id)] = pa.code;
+    const gols = golsRaw.map(g => ({m: g.m, name: g.name, code: idToCode[g.tid] || "", pen: g.pen, og: g.og}));
+    const temConteudo = ph.players.length || pa.players.length || bs || form || (h2h && h2h.length) || gols.length;
     if (!temConteudo) return false;
     store.__lu = store.__lu || {};
     store.__lu[eid] = {h: ph.players, hc: ph.code, hf: ph.form, a: pa.players, ac: pa.code, af: pa.form,
-                       bs: bs, att: att, ref: ref, form: form, h2h: h2h, at: Date.now()};
+                       bs: bs, att: att, ref: ref, form: form, h2h: h2h, gols: gols, at: Date.now()};
     save(); return true;
   } catch(e){ return false; }
 }
