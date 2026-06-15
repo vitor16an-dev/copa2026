@@ -278,6 +278,7 @@
   .grupo tr.q3out td:first-child{box-shadow:inset 3px 0 0 #555;}
   .legenda{font-size:11px; color:#999; margin-top:14px; line-height:1.7;}
   .legenda .sq{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px;}
+  .legenda-topo{margin:16px 0 4px; padding:12px 14px; background:var(--cinza1); border:1px solid var(--cinza2); border-radius:12px; font-size:12px; color:#bbb; line-height:1.9;}
   .grupos-nota{font-size:12px; color:#aaa; margin-top:16px;}
   .grupos-nota b{color:var(--accent2);}
 
@@ -364,12 +365,12 @@
   </section>
 
   <section id="abaGrupos">
-    <div class="grupos-grid" id="gruposGrid"></div>
-    <p class="legenda">
+    <p class="legenda legenda-topo">
       <span class="sq" style="background:var(--ok)"></span>1º e 2º — classificados &nbsp;·&nbsp;
       <span class="sq" style="background:var(--r1)"></span>3º entre os 8 melhores (classificando) &nbsp;·&nbsp;
       <span class="sq" style="background:#555"></span>3º fora (por enquanto)
     </p>
+    <div class="grupos-grid" id="gruposGrid"></div>
     <p class="grupos-nota">As tabelas são calculadas automaticamente a partir dos placares — <b>atualizados sozinhos da internet a cada minuto</b> (jogos em andamento já contam) ou digitados à mão na aba Jogos. Critérios: pontos &gt; saldo &gt; gols pró.</p>
   </section>
 
