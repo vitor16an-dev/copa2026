@@ -194,6 +194,7 @@
   .lu-col .form{color:#888; font-weight:400; font-size:10px;}
   .lu-p{font-size:12px; color:#ccc; padding:2px 0; display:flex; gap:7px; align-items:center;}
   .lu-p .jn{color:#777; width:20px; flex-shrink:0; text-align:right;}
+  .lu-pos{color:var(--accent2); font-size:9px; font-weight:700; width:26px; flex-shrink:0; text-transform:uppercase; letter-spacing:.3px;}
   .lu-nm{flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .lu-ic{flex-shrink:0; font-size:11px; letter-spacing:1px;}
   .in-arrow{color:var(--ok); font-size:10px;}
@@ -273,7 +274,8 @@
   .grupo td.t img{width:20px; height:14px; object-fit:cover; border-radius:2px;}
   .grupo td.pts{font-weight:700; color:var(--accent2);}
   .grupo tr.q1 td:first-child{box-shadow:inset 3px 0 0 var(--ok);}
-  .grupo tr.q3 td:first-child{box-shadow:inset 3px 0 0 var(--warn);}
+  .grupo tr.q3in td:first-child{box-shadow:inset 3px 0 0 var(--r1);}
+  .grupo tr.q3out td:first-child{box-shadow:inset 3px 0 0 #555;}
   .legenda{font-size:11px; color:#999; margin-top:14px; line-height:1.7;}
   .legenda .sq{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px;}
   .grupos-nota{font-size:12px; color:#aaa; margin-top:16px;}
@@ -364,8 +366,9 @@
   <section id="abaGrupos">
     <div class="grupos-grid" id="gruposGrid"></div>
     <p class="legenda">
-      <span class="sq" style="background:var(--ok)"></span>1º e 2º — classificados às oitavas &nbsp;·&nbsp;
-      <span class="sq" style="background:var(--warn)"></span>3º — pode avançar (8 melhores terceiros se classificam)
+      <span class="sq" style="background:var(--ok)"></span>1º e 2º — classificados &nbsp;·&nbsp;
+      <span class="sq" style="background:var(--r1)"></span>3º entre os 8 melhores (classificando) &nbsp;·&nbsp;
+      <span class="sq" style="background:#555"></span>3º fora (por enquanto)
     </p>
     <p class="grupos-nota">As tabelas são calculadas automaticamente a partir dos placares — <b>atualizados sozinhos da internet a cada minuto</b> (jogos em andamento já contam) ou digitados à mão na aba Jogos. Critérios: pontos &gt; saldo &gt; gols pró.</p>
   </section>
@@ -535,7 +538,7 @@ let store = {};
 try { store = JSON.parse(localStorage.getItem("copa2026") || "{}"); } catch(e){ store = {}; }
 function save(){ localStorage.setItem("copa2026", JSON.stringify(store)); }
 // invalida cache de escalações gravado com o bug do gol de pênalti (contava como vermelho)
-if (store.__luVer !== 4){ store.__lu = {}; store.__luVer = 4; save(); }
+if (store.__luVer !== 5){ store.__lu = {}; store.__luVer = 5; save(); }
 
 let fRodada = 0, fCanal = "all", fBusca = "", abaAtual = "jogos";
 let openDrawers = {}; // id -> "tv" | "info" (gavetas abertas, em memória)
@@ -552,6 +555,36 @@ const VENUE_COORDS = {
   "NRG Stadium":[29.6847,-95.4107], "SoFi Stadium":[33.9535,-118.3392]
 };
 const CIDADE_PT = {"Mexico City":"Cidade do México","Santa Clara, California":"Santa Clara, CA"};
+// posições da ESPN (inglês) -> siglas em PT
+const POS_PT = {
+  "G":"GOL","GK":"GOL",
+  "CB":"ZAG","CD":"ZAG","CD-L":"ZAG","CD-R":"ZAG","SW":"ZAG",
+  "LB":"LE","LWB":"LE","RB":"LD","RWB":"LD",
+  "DM":"VOL","CDM":"VOL",
+  "CM":"MC","CM-L":"MC","CM-R":"MC","LCM":"MC","RCM":"MC","M":"MC",
+  "LM":"ME","RM":"MD",
+  "AM":"MEI","CAM":"MEI","AM-L":"MEI","AM-R":"MEI",
+  "LW":"PE","RW":"PD",
+  "F":"ATA","CF":"ATA","ST":"ATA","S":"ATA","LF":"ATA","RF":"ATA"
+};
+function posPT(abbr){
+  if (!abbr) return "";
+  const a = String(abbr).toUpperCase();
+  if (POS_PT[a]) return POS_PT[a];
+  if (/^G/.test(a)) return "GOL";
+  if (/CD|CB/.test(a)) return "ZAG";
+  if (/^LWB|^LB/.test(a)) return "LE";
+  if (/^RWB|^RB/.test(a)) return "LD";
+  if (/^CDM|^DM/.test(a)) return "VOL";
+  if (/^CAM|^AM/.test(a)) return "MEI";
+  if (/^LM/.test(a)) return "ME";
+  if (/^RM/.test(a)) return "MD";
+  if (/^LW/.test(a)) return "PE";
+  if (/^RW/.test(a)) return "PD";
+  if (/CM|^M/.test(a)) return "MC";
+  if (/^F|ST|CF/.test(a)) return "ATA";
+  return a; // fallback: mostra a sigla original
+}
 // código WMO -> [emoji, descrição]
 function wmo(c){
   if (c===0) return ["☀️","Céu limpo"];
@@ -725,32 +758,48 @@ function updateProgress(){
 }
 
 // ===== ABA GRUPOS (tabela calculada dos placares) =====
+function statsDoGrupo(times){
+  const stats = {};
+  times.forEach(t => stats[t] = {pts:0,j:0,v:0,e:0,d:0,gp:0,gc:0});
+  M.forEach(m => {
+    if (!times.includes(m[3]) || !times.includes(m[4])) return;
+    const st = store[matchId(m)] || {};
+    if (typeof st.a !== "number" || typeof st.b !== "number") return;
+    const A = stats[m[3]], B = stats[m[4]];
+    A.j++; B.j++; A.gp += st.a; A.gc += st.b; B.gp += st.b; B.gc += st.a;
+    if (st.a > st.b){ A.v++; B.d++; A.pts += 3; }
+    else if (st.a < st.b){ B.v++; A.d++; B.pts += 3; }
+    else { A.e++; B.e++; A.pts++; B.pts++; }
+  });
+  return stats;
+}
+// comparador FIFA: pontos > saldo > gols pró > nome (desempate alfabético determinístico)
+function cmpSel(ca, cb, sa, sb){
+  return (sb.pts - sa.pts) || ((sb.gp-sb.gc) - (sa.gp-sa.gc)) || (sb.gp - sa.gp) || T[ca][1].localeCompare(T[cb][1]);
+}
 function renderGrupos(){
   const grid = document.getElementById("gruposGrid");
-  grid.innerHTML = Object.keys(G).map(letra => {
-    const times = G[letra];
-    const stats = {};
-    times.forEach(t => stats[t] = {pts:0,j:0,v:0,e:0,d:0,gp:0,gc:0});
-    M.forEach(m => {
-      if (!times.includes(m[3]) || !times.includes(m[4])) return;
-      const st = store[matchId(m)] || {};
-      if (typeof st.a !== "number" || typeof st.b !== "number") return;
-      const A = stats[m[3]], B = stats[m[4]];
-      A.j++; B.j++; A.gp += st.a; A.gc += st.b; B.gp += st.b; B.gc += st.a;
-      if (st.a > st.b){ A.v++; B.d++; A.pts += 3; }
-      else if (st.a < st.b){ B.v++; A.d++; B.pts += 3; }
-      else { A.e++; B.e++; A.pts++; B.pts++; }
-    });
-    const ordem = [...times].sort((x,y) => {
-      const a = stats[x], b = stats[y];
-      return (b.pts - a.pts) || ((b.gp-b.gc) - (a.gp-a.gc)) || (b.gp - a.gp) || T[x][1].localeCompare(T[y][1]);
-    });
+  // 1) calcula todos os grupos e coleta os 3º colocados
+  const ordens = {}, thirds = [];
+  Object.keys(G).forEach(letra => {
+    const stats = statsDoGrupo(G[letra]);
+    const ordem = [...G[letra]].sort((x,y) => cmpSel(x, y, stats[x], stats[y]));
+    ordens[letra] = {ordem, stats};
+    thirds.push({code: ordem[2], letra, s: stats[ordem[2]]});
+  });
+  // 2) ranqueia os 12 terceiros — os 8 melhores se classificam
+  thirds.sort((a,b) => cmpSel(a.code, b.code, a.s, b.s));
+  const qualif = new Set(thirds.slice(0,8).map(t => t.code));
+  // 3) renderiza os grupos
+  let html = Object.keys(G).map(letra => {
+    const {ordem, stats} = ordens[letra];
     return `<div class="grupo">
       <h3>Grupo ${letra}</h3>
       <table>
         <tr><th>#</th><th class="t">Seleção</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>
         ${ordem.map((t,i) => {
-          const s = stats[t], cls = i < 2 ? "q1" : (i === 2 ? "q3" : "");
+          const s = stats[t];
+          const cls = i < 2 ? "q1" : (i === 2 ? (qualif.has(t) ? "q3in" : "q3out") : "");
           return `<tr class="${cls}"><td>${i+1}º</td>
             <td class="t"><img src="https://flagcdn.com/w40/${T[t][0]}.png" alt="">${T[t][1]}</td>
             <td class="pts">${s.pts}</td><td>${s.j}</td><td>${s.v}</td><td>${s.e}</td><td>${s.d}</td>
@@ -759,6 +808,20 @@ function renderGrupos(){
       </table>
     </div>`;
   }).join("");
+  // 4) painel dos melhores terceiros
+  html += `<div class="grupo painel"><h3>🥉 Melhores terceiros — 8 se classificam</h3>
+    <table>
+      <tr><th>#</th><th class="t">Seleção</th><th>P</th><th>J</th><th>SG</th><th>GP</th></tr>
+      ${thirds.map((t,i) => {
+        const s = t.s, sg = s.gp - s.gc;
+        return `<tr class="${i < 8 ? "q3in" : "q3out"}"><td>${i+1}º</td>
+          <td class="t"><img src="https://flagcdn.com/w40/${T[t.code][0]}.png" alt="">${T[t.code][1]} <span class="ctx">(gr. ${t.letra})</span></td>
+          <td class="pts">${s.pts}</td><td>${s.j}</td><td>${sg > 0 ? "+" : ""}${sg}</td><td>${s.gp}</td></tr>`;
+      }).join("")}
+    </table>
+    <p class="ctx" style="margin-top:8px">Os 8 melhores 3º colocados avançam às oitavas. Atualiza com os resultados; critério: pontos, saldo, gols.</p>
+  </div>`;
+  grid.innerHTML = html;
 }
 
 // ===== ABA STATS =====
@@ -861,25 +924,26 @@ function tvHTML(id){
     : `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
     <p class="dr-row ctx">Toque no canal para abrir a transmissão ao vivo.</p>`;
 }
-function plIcons(p){
+function plIcons(p, started){
   let s = "";
   if (p.g) s += "⚽".repeat(Math.min(p.g, 5));
   if (p.y) s += "🟨";
   if (p.r) s += "🟥";
-  if (p.out) s += '<span class="out-arrow">▼</span>';
+  if (started && p.out) s += '<span class="out-arrow">▼</span>'; // só após o apito
   return s;
 }
-function luRow(p){
-  const entered = p.sin && !p.st;
-  return `<div class="lu-p"><span class="jn">${p.n||""}</span><span class="lu-nm">${entered ? '<span class="in-arrow">▲</span> ' : ""}${p.name}</span><span class="lu-ic">${plIcons(p)}</span></div>`;
+function luRow(p, started){
+  const entered = started && p.sin && !p.st;
+  const pos = p.pos ? `<span class="lu-pos">${p.pos}</span>` : `<span class="lu-pos"></span>`;
+  return `<div class="lu-p"><span class="jn">${p.n||""}</span>${pos}<span class="lu-nm">${entered ? '<span class="in-arrow">▲</span> ' : ""}${p.name}</span><span class="lu-ic">${plIcons(p, started)}</span></div>`;
 }
-function luCol(players, code, form){
+function luCol(players, code, form, started){
   const flag = code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
   const nome = code && T[code] ? T[code][1] : "Time";
   const starters = players.filter(p => p.st);
-  const subs = players.filter(p => !p.st && p.sin);
-  let rows = starters.map(luRow).join("");
-  if (subs.length) rows += `<div class="lu-sep">Entraram</div>` + subs.map(luRow).join("");
+  const subs = started ? players.filter(p => !p.st && p.sin) : [];
+  let rows = starters.map(p => luRow(p, started)).join("");
+  if (subs.length) rows += `<div class="lu-sep">Entraram</div>` + subs.map(p => luRow(p, started)).join("");
   return `<div class="lu-col"><h5>${flag}${nome}${form ? ` <span class="form">${form}</span>` : ""}</h5>${rows}</div>`;
 }
 function infoRender(id){
@@ -937,10 +1001,15 @@ function previaHTML(st){
 }
 function lineupHTML(st){
   const lu = (store.__lu || {})[st.eid];
-  if (lu && (lu.h.length || lu.a.length))
-    return `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf)}${luCol(lu.a, lu.ac, lu.af)}</div>` +
-      `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · <span class="in-arrow">▲</span> entrou · <span class="out-arrow">▼</span> saiu</p>`;
-  if (st.state === "in" || st.state === "post") return `<div class="dr-row dr-load">👕 carregando escalações...</div>`;
+  const started = st.state === "in" || st.state === "post";
+  if (lu && (lu.h.length || lu.a.length)){
+    const grade = `<div class="dr-lineup">${luCol(lu.h, lu.hc, lu.hf, started)}${luCol(lu.a, lu.ac, lu.af, started)}</div>`;
+    const legenda = started
+      ? `<p class="dr-row ctx">⚽ gol · 🟨🟥 cartão · <span class="in-arrow">▲</span> entrou · <span class="out-arrow">▼</span> saiu</p>`
+      : `<p class="dr-row ctx">Escalação provável — pode mudar até o apito.</p>`;
+    return grade + legenda;
+  }
+  if (started) return `<div class="dr-row dr-load">👕 carregando escalações...</div>`;
   return `<div class="dr-row ctx">👕 Escalações saem cerca de 1h antes do apito inicial.</div>`;
 }
 function statsMatchHTML(st){
@@ -1046,7 +1115,8 @@ async function fetchLineups(eid){
         players: list.map(p => { const e = ev[p.athlete.id] || {}; return {
           n: p.jersey, name: p.athlete.displayName, st: p.starter ? 1 : 0,
           sin: p.subbedIn ? 1 : 0, out: p.subbedOut ? 1 : 0,
-          g: e.g || 0, y: e.y || 0, r: e.r || 0
+          g: e.g || 0, y: e.y || 0, r: e.r || 0,
+          pos: posPT((p.position || {}).abbreviation || "")
         };})
       };
     };
