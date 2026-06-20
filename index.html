@@ -114,6 +114,18 @@
   details.passado summary{cursor:pointer; padding:13px 0; color:#aaa; font-size:13px; font-weight:600; letter-spacing:.5px; list-style:none; user-select:none;}
   details.passado summary::-webkit-details-marker{display:none;}
   details.passado summary:hover, details.passado[open] summary{color:var(--accent);}
+  /* drill-down por dia (dentro de Dias anteriores) */
+  .dia-acc{margin:8px 0;}
+  .dia-sum{display:flex; align-items:center; gap:10px; cursor:pointer; list-style:none; user-select:none;
+    padding:9px 12px; background:#161616; border:1px solid var(--cinza2); border-left:4px solid var(--accent); border-radius:10px; transition:.15s;}
+  .dia-sum::-webkit-details-marker{display:none;}
+  .dia-sum:hover{background:#1c1c1c;}
+  .dia-sum.r1{border-left-color:var(--r1);} .dia-sum.r2{border-left-color:var(--r2);} .dia-sum.r3{border-left-color:var(--r3);}
+  .dia-sum .ds-date{font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; font-size:16px; letter-spacing:1px;}
+  .dia-sum .ds-wd{font-size:11px; color:#999; text-transform:uppercase; letter-spacing:1px;}
+  .dia-sum .ds-cnt{margin-left:auto; font-size:11px; color:#888; white-space:nowrap;}
+  .dia-acc[open] .dia-sum{border-color:var(--accent); margin-bottom:8px;}
+  .dia-acc[open] .dia-sum .ds-cnt{color:var(--accent);}
 
   /* dias */
   .dia{margin-top:26px;}
@@ -665,6 +677,10 @@ function visivel(m){
 
 function render(){
   const lista = document.getElementById("lista");
+  // preserva o estado dos drill-downs de dias anteriores antes de reconstruir
+  const wasPassadoOpen = !!lista.querySelector(".passado[open]");
+  const openDaySet = new Set();
+  lista.querySelectorAll(".dia-acc[open]").forEach(el => { if (el.dataset.d) openDaySet.add(el.dataset.d); });
   const agora = new Date();
   const porDia = {};
   M.filter(visivel).forEach(m => { (porDia[m[0]] = porDia[m[0]] || []).push(m); });
@@ -685,6 +701,21 @@ function render(){
       ${jogos.map(m => jogoHTML(m, agora)).join("")}
     </section>`;
   };
+  // dia anterior: drill-down próprio (só a barra da data; abre ao tocar)
+  const diaAcc = d => {
+    const jogos = porDia[d];
+    const r = jogos[0][2];
+    const data = new Date(2026, 5, d);
+    return `<details class="dia-acc" data-d="${d}">
+      <summary class="dia-sum r${r}">
+        <span class="ds-date">${String(d).padStart(2,"0")}/06</span>
+        <span class="ds-wd">${WD[data.getDay()]}</span>
+        <span class="rod r${r}">Rodada ${r}</span>
+        <span class="ds-cnt">${jogos.length} jogo${jogos.length > 1 ? "s" : ""} ›</span>
+      </summary>
+      <div class="dia-acc-body">${jogos.map(m => jogoHTML(m, agora)).join("")}</div>
+    </details>`;
+  };
   if (!dias.length){
     lista.innerHTML = '<p class="vazio">Nenhum jogo encontrado com esses filtros. 🤷</p>';
   } else {
@@ -694,10 +725,15 @@ function render(){
     let html = "";
     if (passados.length){
       const n = passados.reduce((acc, d) => acc + porDia[d].length, 0);
-      html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${passados.map(diaHTML).join("")}</details>`;
+      // mais recente primeiro; cada dia é um drill-down separado
+      const accs = passados.slice().reverse().map(diaAcc).join("");
+      html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${accs}</details>`;
     }
     html += atuais.map(diaHTML).join("");
     lista.innerHTML = html;
+    // reabre os dias que estavam abertos antes do refresh
+    if (wasPassadoOpen){ const pd = lista.querySelector(".passado"); if (pd) pd.open = true; }
+    openDaySet.forEach(d => { const el = lista.querySelector('.dia-acc[data-d="' + d + '"]'); if (el) el.open = true; });
   }
   updateProgress();
   // reabre gavetas que estavam abertas antes do refresh
