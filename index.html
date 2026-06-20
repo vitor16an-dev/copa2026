@@ -85,10 +85,11 @@
   .tab{
     flex:1; background:none; border:none; color:#999; cursor:pointer;
     font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
-    letter-spacing:2px; font-size:13px; padding:10px 0 12px;
+    letter-spacing:1px; font-size:12px; padding:10px 2px 12px; white-space:nowrap;
     border-bottom:3px solid transparent; transition:.15s;
   }
   .tab.on{color:var(--accent); border-bottom-color:var(--accent);}
+  @media (max-width:520px){ .tab{font-size:10.5px; letter-spacing:.3px;} }
 
   /* filtros */
   .filters{padding:12px 0 10px; border-bottom:1px solid var(--cinza2);}
@@ -249,7 +250,23 @@
   .lu-sep{font-size:10px; color:#777; text-transform:uppercase; letter-spacing:1px; margin:8px 0 3px; border-top:1px dashed var(--cinza2); padding-top:5px;}
 
   /* ===== abas grupos / stats ===== */
-  #abaGrupos, #abaStats{display:none;}
+  #abaGrupos, #abaStats, #abaMata{display:none;}
+  /* mata-mata: bracket horizontal */
+  .mm-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch; padding:6px 2px 14px; margin-top:6px;}
+  .mm-bracket{display:flex; gap:14px; min-width:max-content;}
+  .mm-col{display:flex; flex-direction:column; justify-content:space-around; gap:10px; min-width:172px;}
+  .mm-col h4{font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    letter-spacing:1px; font-size:12px; color:var(--accent); margin-bottom:4px; text-align:center; position:sticky; top:0;}
+  .mm-match{background:var(--cinza1); border:1px solid var(--cinza2); border-radius:10px; padding:8px 10px; position:relative;}
+  .mm-match .mm-n{position:absolute; top:-8px; left:8px; background:var(--accent); color:#000; font-size:9px; font-weight:700;
+    padding:1px 7px; border-radius:999px; letter-spacing:.5px;}
+  .mm-team{display:flex; align-items:center; gap:7px; font-size:13px; color:#fff; padding:4px 0; font-weight:500;}
+  .mm-team:first-of-type{border-bottom:1px solid #1a1a1a;}
+  .mm-team img{width:22px; height:15px; object-fit:cover; border-radius:2px; flex-shrink:0;}
+  .mm-ph{display:block; font-size:12px; color:#888; padding:4px 0; font-weight:400;}
+  .mm-match .mm-ph:first-of-type{border-bottom:1px solid #1a1a1a;}
+  .mm-3rd{margin-top:18px;}
+  .mm-3rd .mm-n{background:#555; color:#fff;}
   .stat-linha{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #1a1a1a; font-size:13px; font-weight:400;}
   .stat-linha .pos{color:#888; font-size:11px; width:24px; flex-shrink:0;}
   .stat-linha img{width:20px; height:14px; object-fit:cover; border-radius:2px;}
@@ -317,7 +334,7 @@
   .notas b{color:var(--accent2);}
 
   .acoes{display:flex; gap:10px; margin:10px 0 4px;}
-  .acoes .btn{flex:1; text-align:center;}
+  .acoes .btn{flex:1; min-width:0; text-align:center;}
   .vazio{text-align:center; color:#777; padding:40px 0; font-size:14px;}
   footer{margin-top:40px; text-align:left; font-size:11px; color:#666;}
   footer b{color:var(--accent);}
@@ -362,6 +379,7 @@
     <button class="tab on" id="tabJogos" onclick="trocarAba('jogos')">📅 Jogos</button>
     <button class="tab" id="tabGrupos" onclick="trocarAba('grupos')">🏆 Grupos</button>
     <button class="tab" id="tabStats" onclick="trocarAba('stats')">📊 Stats</button>
+    <button class="tab" id="tabMata" onclick="trocarAba('mata')">🗝️ Mata-mata</button>
   </nav>
 
   <section id="abaJogos">
@@ -401,6 +419,12 @@
   <section id="abaStats">
     <div class="grupos-grid" id="statsGrid"></div>
     <p class="grupos-nota">Estatísticas calculadas dos lances oficiais de cada partida (via ESPN), <b>atualizadas automaticamente a cada minuto</b> — gols em andamento já contam. Gols contra não entram na artilharia; segundo amarelo conta como amarelo e vermelho.</p>
+  </section>
+
+  <section id="abaMata">
+    <p class="legenda legenda-topo">🗝️ <b style="color:var(--accent2)">Chaveamento projetado</b> — os 16-avos já mostram quem se enfrentaria <b>com a classificação de agora</b>. Vagas de 3º colocado ficam como "3º A/B/C..." (definem-se no fim da fase de grupos). As fases seguintes preenchem conforme o mata-mata acontece.</p>
+    <div class="mm-wrap"><div class="mm-bracket" id="mataBracket"></div></div>
+    <p class="grupos-nota">Estrutura oficial do mata-mata da Copa 2026 (via ESPN). Arraste para o lado para ver todas as fases. Times nos 16-avos seguem a ordem atual dos grupos (pontos &gt; saldo &gt; gols).</p>
   </section>
 
   <div class="notas">
@@ -653,7 +677,7 @@ function matchId(m){ return m[0] + "_" + m[1] + "_" + m[3] + "_" + m[4]; }
 function norm(s){ return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
 
 // ===== ABAS =====
-const ABAS = {jogos:["abaJogos","tabJogos"], grupos:["abaGrupos","tabGrupos"], stats:["abaStats","tabStats"]};
+const ABAS = {jogos:["abaJogos","tabJogos"], grupos:["abaGrupos","tabGrupos"], stats:["abaStats","tabStats"], mata:["abaMata","tabMata"]};
 function trocarAba(qual){
   abaAtual = qual;
   for (const k in ABAS){
@@ -662,6 +686,7 @@ function trocarAba(qual){
   }
   if (qual === "grupos") renderGrupos();
   if (qual === "stats") renderStats();
+  if (qual === "mata") renderMata();
 }
 
 // ===== ABA JOGOS =====
@@ -874,6 +899,57 @@ function renderGrupos(){
     <p class="ctx" style="margin-top:8px">Os 8 melhores 3º colocados avançam às oitavas. Atualiza com os resultados; critério: pontos, saldo, gols.</p>
   </div>`;
   grid.innerHTML = html;
+}
+
+// ===== ABA MATA-MATA (chaveamento projetado) =====
+// estrutura oficial 2026 (via ESPN). slot: ["1"/"2", grupo] ou ["3", "grupos/.../"]
+const R32 = [
+  {n:1,  h:["2","A"], a:["2","B"]},
+  {n:2,  h:["1","C"], a:["2","F"]},
+  {n:3,  h:["1","F"], a:["2","C"]},
+  {n:4,  h:["1","E"], a:["3","A/B/C/D/F"]},
+  {n:5,  h:["2","E"], a:["2","I"]},
+  {n:6,  h:["1","A"], a:["3","C/E/F/H/I"]},
+  {n:7,  h:["1","I"], a:["3","C/D/F/G/H"]},
+  {n:8,  h:["1","G"], a:["3","A/E/H/I/J"]},
+  {n:9,  h:["1","D"], a:["3","B/E/F/I/J"]},
+  {n:10, h:["1","L"], a:["3","E/H/I/J/K"]},
+  {n:11, h:["2","K"], a:["2","L"]},
+  {n:12, h:["1","H"], a:["2","J"]},
+  {n:13, h:["1","B"], a:["3","E/F/G/I/J"]},
+  {n:14, h:["2","D"], a:["2","G"]},
+  {n:15, h:["1","J"], a:["2","H"]},
+  {n:16, h:["1","K"], a:["3","D/E/I/J/L"]}
+];
+const R16 = [{n:1,f:[1,3]},{n:2,f:[2,5]},{n:3,f:[4,6]},{n:4,f:[7,8]},{n:5,f:[11,12]},{n:6,f:[9,10]},{n:7,f:[14,16]},{n:8,f:[13,15]}];
+const QF  = [{n:1,f:[1,2]},{n:2,f:[5,6]},{n:3,f:[3,4]},{n:4,f:[7,8]}];
+const SF  = [{n:1,f:[1,2]},{n:2,f:[3,4]}];
+
+function ordemGrupo(letra){
+  const stats = statsDoGrupo(G[letra]);
+  return [...G[letra]].sort((x,y) => cmpSel(x, y, stats[x], stats[y]));
+}
+function mmSlotHTML(slot){
+  if (slot[0] === "1" || slot[0] === "2"){
+    const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1];
+    return `<span class="mm-team"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">${T[code][1]}</span>`;
+  }
+  return `<span class="mm-ph">3º ${slot[1]}</span>`;
+}
+function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
+function mmMatch(num, topHTML, botHTML){
+  return `<div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}</div>`;
+}
+function renderMata(){
+  const el = document.getElementById("mataBracket");
+  const col16 = R32.map(m => mmMatch("P" + m.n, mmSlotHTML(m.h), mmSlotHTML(m.a))).join("");
+  const colOit = R16.map(m => mmMatch("8ª " + m.n, mmWinHTML("Vencedor P" + m.f[0]), mmWinHTML("Vencedor P" + m.f[1]))).join("");
+  const colQua = QF.map(m => mmMatch("4ª " + m.n, mmWinHTML("Vencedor 8ª " + m.f[0]), mmWinHTML("Vencedor 8ª " + m.f[1]))).join("");
+  const colSemi = SF.map(m => mmMatch("SF " + m.n, mmWinHTML("Vencedor 4ª " + m.f[0]), mmWinHTML("Vencedor 4ª " + m.f[1]))).join("");
+  const colFinal = mmMatch("🏆", mmWinHTML("Vencedor SF 1"), mmWinHTML("Vencedor SF 2"))
+    + `<div class="mm-3rd">${mmMatch("3º lugar", mmWinHTML("Perdedor SF 1"), mmWinHTML("Perdedor SF 2"))}</div>`;
+  const col = (titulo, html) => `<div class="mm-col"><h4>${titulo}</h4>${html}</div>`;
+  el.innerHTML = col("16-avos", col16) + col("Oitavas", colOit) + col("Quartas", colQua) + col("Semis", colSemi) + col("Final", colFinal);
 }
 
 // ===== ABA STATS =====
