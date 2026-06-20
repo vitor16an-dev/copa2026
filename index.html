@@ -262,9 +262,11 @@
   .mm-match{width:100%; background:var(--cinza1); border:1px solid var(--cinza2); border-radius:10px; padding:8px 10px; position:relative;}
   .mm-match .mm-n{position:absolute; top:-8px; left:8px; background:var(--accent); color:#000; font-size:9px; font-weight:700;
     padding:1px 7px; border-radius:999px; letter-spacing:.5px; white-space:nowrap;}
-  .mm-team{display:flex; align-items:center; gap:7px; font-size:13px; color:#fff; padding:4px 0; font-weight:500;}
+  .mm-team{display:flex; align-items:center; gap:6px; font-size:12.5px; color:#fff; padding:4px 0; font-weight:500;}
   .mm-team:first-of-type{border-bottom:1px solid #1a1a1a;}
-  .mm-team img{width:22px; height:15px; object-fit:cover; border-radius:2px; flex-shrink:0;}
+  .mm-team img{width:20px; height:14px; object-fit:cover; border-radius:2px; flex-shrink:0;}
+  .mm-team .mm-slot{color:var(--accent2); font-weight:700; font-size:10.5px; min-width:20px; flex-shrink:0;}
+  .mm-team .mm-nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .mm-ph{display:block; font-size:12px; color:#888; padding:4px 0; font-weight:400;}
   .mm-match .mm-ph:first-of-type{border-bottom:1px solid #1a1a1a;}
   /* conectores: stub à direita + linha vertical unindo cada par */
@@ -940,10 +942,13 @@ function ordemGrupo(letra){
   const stats = statsDoGrupo(G[letra]);
   return [...G[letra]].sort((x,y) => cmpSel(x, y, stats[x], stats[y]));
 }
+// nomes curtos para o bracket (multi-palavra)
+const MM_ABBR = {USA:"EUA", KOR:"C. Sul", CIV:"C. Marfim", KSA:"A. Saudita", NZL:"N. Zelândia", CPV:"C. Verde", RSA:"Á. Sul", COD:"RD Congo"};
+function mmNome(code){ return MM_ABBR[code] || T[code][1]; }
 function mmSlotHTML(slot){
   if (slot[0] === "1" || slot[0] === "2"){
     const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1];
-    return `<span class="mm-team"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">${T[code][1]}</span>`;
+    return `<span class="mm-team"><span class="mm-slot">${slot[0]}${slot[1]}</span><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span></span>`;
   }
   return `<span class="mm-ph">3º ${slot[1]}</span>`;
 }
