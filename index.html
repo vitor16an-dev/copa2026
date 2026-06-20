@@ -251,22 +251,32 @@
 
   /* ===== abas grupos / stats ===== */
   #abaGrupos, #abaStats, #abaMata{display:none;}
-  /* mata-mata: bracket horizontal */
+  /* mata-mata: bracket planar com conectores */
   .mm-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch; padding:6px 2px 14px; margin-top:6px;}
-  .mm-bracket{display:flex; gap:14px; min-width:max-content;}
-  .mm-col{display:flex; flex-direction:column; justify-content:space-around; gap:10px; min-width:172px;}
-  .mm-col h4{font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
-    letter-spacing:1px; font-size:12px; color:var(--accent); margin-bottom:4px; text-align:center; position:sticky; top:0;}
-  .mm-match{background:var(--cinza1); border:1px solid var(--cinza2); border-radius:10px; padding:8px 10px; position:relative;}
+  .mm-bracket{display:flex; align-items:stretch; gap:30px; min-width:max-content;}
+  .mm-round{display:flex; flex-direction:column; min-width:166px;}
+  .mm-round h4{font-family:'Neutral Face','Poppins',sans-serif; font-weight:700; text-transform:uppercase;
+    letter-spacing:1px; font-size:12px; color:var(--accent); margin-bottom:6px; text-align:center;}
+  .mm-round-body{flex:1; display:flex; flex-direction:column;}
+  .mm-match-wrap{flex:1; display:flex; align-items:center; min-height:64px; position:relative;}
+  .mm-match{width:100%; background:var(--cinza1); border:1px solid var(--cinza2); border-radius:10px; padding:8px 10px; position:relative;}
   .mm-match .mm-n{position:absolute; top:-8px; left:8px; background:var(--accent); color:#000; font-size:9px; font-weight:700;
-    padding:1px 7px; border-radius:999px; letter-spacing:.5px;}
+    padding:1px 7px; border-radius:999px; letter-spacing:.5px; white-space:nowrap;}
   .mm-team{display:flex; align-items:center; gap:7px; font-size:13px; color:#fff; padding:4px 0; font-weight:500;}
   .mm-team:first-of-type{border-bottom:1px solid #1a1a1a;}
   .mm-team img{width:22px; height:15px; object-fit:cover; border-radius:2px; flex-shrink:0;}
   .mm-ph{display:block; font-size:12px; color:#888; padding:4px 0; font-weight:400;}
   .mm-match .mm-ph:first-of-type{border-bottom:1px solid #1a1a1a;}
-  .mm-3rd{margin-top:18px;}
-  .mm-3rd .mm-n{background:#555; color:#fff;}
+  /* conectores: stub à direita + linha vertical unindo cada par */
+  .mm-round:not(:last-child) .mm-match-wrap::after{content:""; position:absolute; left:100%; width:15px; height:50%; border-right:2px solid #3a3a3a;}
+  .mm-round:not(:last-child) .mm-match-wrap:nth-child(odd)::after{top:50%; border-top:2px solid #3a3a3a;}
+  .mm-round:not(:last-child) .mm-match-wrap:nth-child(even)::after{bottom:50%; border-bottom:2px solid #3a3a3a;}
+  /* stub à esquerda entrando no confronto seguinte */
+  .mm-round:not(:first-child) .mm-match-wrap::before{content:""; position:absolute; right:100%; top:50%; width:15px; height:2px; background:#3a3a3a;}
+  /* 3º lugar (fora da árvore) */
+  .mm-third{margin-top:18px; max-width:340px;}
+  .mm-third .mm-match{background:#161616;}
+  .mm-third .mm-n{background:#555; color:#fff;}
   .stat-linha{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #1a1a1a; font-size:13px; font-weight:400;}
   .stat-linha .pos{color:#888; font-size:11px; width:24px; flex-shrink:0;}
   .stat-linha img{width:20px; height:14px; object-fit:cover; border-radius:2px;}
@@ -938,19 +948,28 @@ function mmSlotHTML(slot){
   return `<span class="mm-ph">3º ${slot[1]}</span>`;
 }
 function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
-function mmMatch(num, topHTML, botHTML){
-  return `<div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}</div>`;
+function mmCard(num, topHTML, botHTML){
+  return `<div class="mm-match-wrap"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}</div></div>`;
 }
+// ordem planar (igual à ESPN): cada par de confrontos alimenta o próximo, centralizado
+const ORD32 = [2,5,1,3,11,12,9,10,4,6,7,8,14,16,13,15];
+const ORD16 = [2,1,5,6,3,4,7,8];
+const ORDQF = [1,2,3,4];
+const ORDSF = [1,2];
 function renderMata(){
   const el = document.getElementById("mataBracket");
-  const col16 = R32.map(m => mmMatch("P" + m.n, mmSlotHTML(m.h), mmSlotHTML(m.a))).join("");
-  const colOit = R16.map(m => mmMatch("8ª " + m.n, mmWinHTML("Vencedor P" + m.f[0]), mmWinHTML("Vencedor P" + m.f[1]))).join("");
-  const colQua = QF.map(m => mmMatch("4ª " + m.n, mmWinHTML("Vencedor 8ª " + m.f[0]), mmWinHTML("Vencedor 8ª " + m.f[1]))).join("");
-  const colSemi = SF.map(m => mmMatch("SF " + m.n, mmWinHTML("Vencedor 4ª " + m.f[0]), mmWinHTML("Vencedor 4ª " + m.f[1]))).join("");
-  const colFinal = mmMatch("🏆", mmWinHTML("Vencedor SF 1"), mmWinHTML("Vencedor SF 2"))
-    + `<div class="mm-3rd">${mmMatch("3º lugar", mmWinHTML("Perdedor SF 1"), mmWinHTML("Perdedor SF 2"))}</div>`;
-  const col = (titulo, html) => `<div class="mm-col"><h4>${titulo}</h4>${html}</div>`;
-  el.innerHTML = col("16-avos", col16) + col("Oitavas", colOit) + col("Quartas", colQua) + col("Semis", colSemi) + col("Final", colFinal);
+  const byN = a => { const o = {}; a.forEach(x => o[x.n] = x); return o; };
+  const m32 = byN(R32), m16 = byN(R16), mqf = byN(QF), msf = byN(SF);
+  const c32 = ORD32.map(n => { const m = m32[n]; return mmCard("16-avos " + n, mmSlotHTML(m.h), mmSlotHTML(m.a)); }).join("");
+  const c16 = ORD16.map(n => { const m = m16[n]; return mmCard("Oitavas " + n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1])); }).join("");
+  const cqf = ORDQF.map(n => { const m = mqf[n]; return mmCard("Quartas " + n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1])); }).join("");
+  const csf = ORDSF.map(n => { const m = msf[n]; return mmCard("Semi " + n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1])); }).join("");
+  const cf  = mmCard("🏆 Final", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"));
+  const round = (titulo, html) => `<div class="mm-round"><h4>${titulo}</h4><div class="mm-round-body">${html}</div></div>`;
+  el.innerHTML = round("16-avos", c32) + round("Oitavas", c16) + round("Quartas", cqf) + round("Semis", csf) + round("Final", cf);
+  // 3º lugar fora da árvore
+  el.insertAdjacentHTML("beforeend",
+    `<div class="mm-round"><h4>3º lugar</h4><div class="mm-third">${('<div class="mm-match"><span class="mm-n">3º lugar</span>' + mmWinHTML("Perdedor Semi 1") + mmWinHTML("Perdedor Semi 2") + '</div>')}</div></div>`);
 }
 
 // ===== ABA STATS =====
