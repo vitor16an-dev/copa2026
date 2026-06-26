@@ -300,7 +300,8 @@
   .faixa-w .fl{width:78px;}
   .faixa .fb{flex:1; background:#000; border-radius:4px; height:10px; overflow:hidden;}
   .faixa .fb div{height:100%; background:linear-gradient(90deg, var(--accent), #7C4DFF); border-radius:4px; transition:width .4s;}
-  .faixa b{width:20px; text-align:right; color:var(--accent2);}
+  .faixa b{width:60px; text-align:right; color:var(--accent2); flex-shrink:0;}
+  .faixa .fp{color:#888; font-size:10px; font-weight:400;}
   .grupos-grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));
     gap:14px; margin-top:20px;
@@ -1018,17 +1019,19 @@ function renderStats(){
   // card: quando saem os gols (faixas de tempo)
   const fLabels = ["1–15'","16–30'","31–45'+","46–60'","61–75'","76–90'","90'+ ⏱"];
   const fMax = Math.max.apply(null, s.faixas.concat([1]));
+  const fTot = s.faixas.reduce((a,b) => a + b, 0) || 1;
   const faixasHTML = s.faixas.map((n, i) =>
-    `<div class="faixa"><span class="fl">${fLabels[i]}</span><div class="fb"><div style="width:${Math.round(n/fMax*100)}%"></div></div><b>${n}</b></div>`).join("");
+    `<div class="faixa"><span class="fl">${fLabels[i]}</span><div class="fb"><div style="width:${Math.round(n/fMax*100)}%"></div></div><b>${n} <span class="fp">${Math.round(n/fTot*100)}%</span></b></div>`).join("");
   const cardGols = `<div class="grupo"><h3>⏱ Quando saem os gols</h3>${faixasHTML}</div>`;
 
   // card: tipos de gol (breakdown visual)
   const TIPO_INFO = {"Normal":["⚽","var(--accent)"],"Cabeça":["🦅","#4FC3F7"],"Pênalti":["🎯","#FFCA0A"],"Voleio":["🌀","#69F0AE"],"Falta":["🧱","#FC9201"],"Contra":["🙃","#FF5252"]};
   const tiposEnt = Object.entries(s.tipos || {}).sort((a,b) => b[1]-a[1]);
   const tMax = Math.max.apply(null, tiposEnt.map(t => t[1]).concat([1]));
+  const tTot = tiposEnt.reduce((a,t) => a + t[1], 0) || 1;
   const tiposHTML = tiposEnt.length
     ? tiposEnt.map(([k,v]) => { const inf = TIPO_INFO[k] || ["⚽","var(--accent)"];
-        return `<div class="faixa faixa-w"><span class="fl">${inf[0]} ${k}</span><div class="fb"><div style="width:${Math.round(v/tMax*100)}%;background:${inf[1]}"></div></div><b>${v}</b></div>`; }).join("")
+        return `<div class="faixa faixa-w"><span class="fl">${inf[0]} ${k}</span><div class="fb"><div style="width:${Math.round(v/tMax*100)}%;background:${inf[1]}"></div></div><b>${v} <span class="fp">${Math.round(v/tTot*100)}%</span></b></div>`; }).join("")
     : `<p class="stat-vazio">Nenhum gol ainda</p>`;
   const cardTipos = `<div class="grupo"><h3>⚽ Tipos de gol</h3>${tiposHTML}</div>`;
 
