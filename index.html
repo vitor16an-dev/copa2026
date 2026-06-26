@@ -160,6 +160,12 @@
   }
   .live-tag{display:block; font-size:8.5px; color:var(--accent); letter-spacing:.3px; font-weight:700; margin-top:5px; line-height:1.3;}
   .fim-tag{display:block; font-size:8.5px; color:#888; letter-spacing:.3px; font-weight:700; margin-top:5px; line-height:1.3;}
+  /* cards do mata-mata na aba Jogos */
+  .dia-head.ko-head{border-left-color:var(--accent);}
+  .ko-rod{background:var(--accent); color:#000;}
+  .jogo.ko .nome{font-weight:400;}
+  .ko-slot{color:var(--accent2); font-size:10px; font-weight:700; margin-left:6px;}
+  .ko-ph2{color:#999;}
 
   .times{display:flex; flex-direction:column; gap:6px;}
   .linha-time{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:400;}
@@ -271,6 +277,7 @@
   .mm-team .mm-slot{color:var(--accent2); font-weight:700; font-size:10.5px; min-width:20px; flex-shrink:0;}
   .mm-team .mm-nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .mm-ph{display:block; font-size:12px; color:#888; padding:4px 0; font-weight:400;}
+  .mm-d{display:block; font-size:10px; color:#777; margin-top:5px; padding-top:5px; border-top:1px solid #1a1a1a; letter-spacing:.3px;}
   .mm-match .mm-ph:first-of-type{border-bottom:1px solid #1a1a1a;}
   /* conectores: stub à direita + linha vertical unindo cada par */
   .mm-round:not(:last-child) .mm-match-wrap::after{content:""; position:absolute; left:100%; width:15px; height:50%; border-right:2px solid #3a3a3a;}
@@ -394,8 +401,8 @@
 
   <nav class="tabs">
     <button class="tab on" id="tabJogos" onclick="trocarAba('jogos')">📅 Jogos</button>
-    <button class="tab" id="tabGrupos" onclick="trocarAba('grupos')">🏆 Grupos</button>
     <button class="tab" id="tabMata" onclick="trocarAba('mata')">🗝️ Mata-mata</button>
+    <button class="tab" id="tabGrupos" onclick="trocarAba('grupos')">🏆 Grupos</button>
     <button class="tab" id="tabStats" onclick="trocarAba('stats')">📊 Stats</button>
   </nav>
 
@@ -758,25 +765,23 @@ function render(){
       <div class="dia-acc-body">${jogos.map(m => jogoHTML(m, agora)).join("")}</div>
     </details>`;
   };
-  if (!dias.length){
-    lista.innerHTML = '<p class="vazio">Nenhum jogo encontrado com esses filtros. 🤷</p>';
-  } else {
-    // dias que já passaram (calendário de Brasília) ficam recolhidos; a página abre em hoje + próximos
-    const passados = dias.filter(d => 20260600 + d < hojeN);
-    const atuais = dias.filter(d => 20260600 + d >= hojeN);
-    let html = "";
-    if (passados.length){
-      const n = passados.reduce((acc, d) => acc + porDia[d].length, 0);
-      // mais recente primeiro; cada dia é um drill-down separado
-      const accs = passados.slice().reverse().map(diaAcc).join("");
-      html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${accs}</details>`;
-    }
-    html += atuais.map(diaHTML).join("");
-    lista.innerHTML = html;
-    // reabre os dias que estavam abertos antes do refresh
-    if (wasPassadoOpen){ const pd = lista.querySelector(".passado"); if (pd) pd.open = true; }
-    openDaySet.forEach(d => { const el = lista.querySelector('.dia-acc[data-d="' + d + '"]'); if (el) el.open = true; });
+  // dias que já passaram (calendário de Brasília) ficam recolhidos; a página abre em hoje + próximos
+  const passados = dias.filter(d => 20260600 + d < hojeN);
+  const atuais = dias.filter(d => 20260600 + d >= hojeN);
+  let html = "";
+  if (passados.length){
+    const n = passados.reduce((acc, d) => acc + porDia[d].length, 0);
+    // mais recente primeiro; cada dia é um drill-down separado
+    const accs = passados.slice().reverse().map(diaAcc).join("");
+    html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${accs}</details>`;
   }
+  html += atuais.map(diaHTML).join("");
+  // mata-mata: aparece na visão sem filtros (não é "rodada" nem tem canal definido)
+  if (fRodada === 0 && fCanal === "all" && !fBusca) html += renderKO();
+  lista.innerHTML = html || '<p class="vazio">Nenhum jogo encontrado com esses filtros. 🤷</p>';
+  // reabre os dias que estavam abertos antes do refresh
+  if (wasPassadoOpen){ const pd = lista.querySelector(".passado"); if (pd) pd.open = true; }
+  openDaySet.forEach(d => { const el = lista.querySelector('.dia-acc[data-d="' + d + '"]'); if (el) el.open = true; });
   updateProgress();
   // reabre gavetas que estavam abertas antes do refresh
   for (const id in openDrawers){
@@ -941,6 +946,70 @@ const R32 = [
 const R16 = [{n:1,f:[2,5]},{n:2,f:[1,3]},{n:3,f:[4,6]},{n:4,f:[7,8]},{n:5,f:[11,12]},{n:6,f:[9,10]},{n:7,f:[14,16]},{n:8,f:[13,15]}];
 const QF  = [{n:1,f:[1,2]},{n:2,f:[5,6]},{n:3,f:[3,4]},{n:4,f:[7,8]}];
 const SF  = [{n:1,f:[1,2]},{n:2,f:[3,4]}];
+// datas/horários oficiais (UTC) do mata-mata, por número de jogo de cada fase
+const D32 = {1:"2026-06-28T19:00Z",2:"2026-06-29T20:30Z",3:"2026-06-30T01:00Z",4:"2026-06-29T17:00Z",5:"2026-06-30T21:00Z",6:"2026-06-30T17:00Z",7:"2026-07-01T01:00Z",8:"2026-07-01T16:00Z",9:"2026-07-02T00:00Z",10:"2026-07-01T20:00Z",11:"2026-07-02T23:00Z",12:"2026-07-02T19:00Z",13:"2026-07-03T03:00Z",14:"2026-07-03T22:00Z",15:"2026-07-04T01:30Z",16:"2026-07-03T18:00Z"};
+const D16 = {1:"2026-07-04T21:00Z",2:"2026-07-04T17:00Z",3:"2026-07-05T20:00Z",4:"2026-07-06T00:00Z",5:"2026-07-06T19:00Z",6:"2026-07-07T00:00Z",7:"2026-07-07T16:00Z",8:"2026-07-07T20:00Z"};
+const DQF = {1:"2026-07-09T20:00Z",2:"2026-07-10T19:00Z",3:"2026-07-11T21:00Z",4:"2026-07-12T01:00Z"};
+const DSF = {1:"2026-07-14T19:00Z",2:"2026-07-15T19:00Z"};
+const D3RD = "2026-07-18T21:00Z", DFINAL = "2026-07-19T19:00Z";
+// formata data UTC no fuso local do visitante: "28/06 · 16h00"
+function koDataHora(iso){
+  if (!iso) return "";
+  const d = new Date(iso);
+  const dt = d.toLocaleDateString("pt-BR", {day:"2-digit", month:"2-digit"});
+  const hr = d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":", "h");
+  return dt + " · " + hr;
+}
+// lista de jogos do mata-mata (pra aba Jogos), com data e confronto projetado
+const KO = [];
+R32.forEach(m => KO.push({iso: D32[m.n], round: "16-avos", h: m.h, a: m.a}));
+R16.forEach(m => KO.push({iso: D16[m.n], round: "Oitavas", h: "Venc. 16-avos " + m.f[0], a: "Venc. 16-avos " + m.f[1]}));
+QF.forEach(m => KO.push({iso: DQF[m.n], round: "Quartas", h: "Venc. Oitavas " + m.f[0], a: "Venc. Oitavas " + m.f[1]}));
+SF.forEach(m => KO.push({iso: DSF[m.n], round: "Semifinais", h: "Venc. Quartas " + m.f[0], a: "Venc. Quartas " + m.f[1]}));
+KO.push({iso: D3RD, round: "3º lugar", h: "Perdedor Semi 1", a: "Perdedor Semi 2"});
+KO.push({iso: DFINAL, round: "Final", h: "Venc. Semi 1", a: "Venc. Semi 2"});
+// resolve um slot do mata-mata para uma linha (bandeira+nome projetado ou placeholder)
+function koLinha(slot){
+  if (Array.isArray(slot)){
+    if (slot[0] === "1" || slot[0] === "2"){
+      const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1];
+      return `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="nome">${T[code][1]}</span><span class="ko-slot">${slot[0]}${slot[1]}</span>`;
+    }
+    return `<span class="nome ko-ph2">3º ${slot[1]}</span>`;
+  }
+  return `<span class="nome ko-ph2">${slot}</span>`;
+}
+function koJogoHTML(fx){
+  const hr = new Date(fx.iso).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":", "h");
+  return `<div class="jogo ko">
+    <div class="jogo-top">
+      <div class="hora">${hr}</div>
+      <div class="times">
+        <div class="linha-time">${koLinha(fx.h)}</div>
+        <div class="linha-time">${koLinha(fx.a)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+// dias do mata-mata agrupados (no fuso local), em ordem cronológica
+function renderKO(){
+  const byDay = {};
+  KO.forEach(fx => {
+    const d = new Date(fx.iso);
+    const key = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    (byDay[key] = byDay[key] || []).push(fx);
+  });
+  return Object.keys(byDay).map(Number).sort((a,b) => a-b).map(key => {
+    const fxs = byDay[key].sort((a,b) => new Date(a.iso) - new Date(b.iso));
+    const d = new Date(fxs[0].iso);
+    const dd = String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
+    const rounds = [...new Set(fxs.map(f => f.round))];
+    const rod = rounds.length === 1 ? rounds[0] : "Mata-mata";
+    return `<section class="dia"><div class="dia-head ko-head">
+        <h2>${dd}</h2><span class="wd">${WD[d.getDay()]}</span><span class="rod ko-rod">${rod}</span>
+      </div>${fxs.map(koJogoHTML).join("")}</section>`;
+  }).join("");
+}
 
 function ordemGrupo(letra){
   const stats = statsDoGrupo(G[letra]);
@@ -957,8 +1026,9 @@ function mmSlotHTML(slot){
   return `<span class="mm-ph">3º ${slot[1]}</span>`;
 }
 function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
-function mmCard(num, topHTML, botHTML){
-  return `<div class="mm-match-wrap"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}</div></div>`;
+function mmCard(num, topHTML, botHTML, iso){
+  const data = iso ? `<span class="mm-d">${koDataHora(iso)}</span>` : "";
+  return `<div class="mm-match-wrap"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}${data}</div></div>`;
 }
 // ordem planar (igual à ESPN): cada par de confrontos alimenta o próximo, centralizado
 const ORD32 = [2,5,1,3,11,12,9,10,4,6,7,8,14,16,13,15];
@@ -969,16 +1039,16 @@ function renderMata(){
   const el = document.getElementById("mataBracket");
   const byN = a => { const o = {}; a.forEach(x => o[x.n] = x); return o; };
   const m32 = byN(R32), m16 = byN(R16), mqf = byN(QF), msf = byN(SF);
-  const c32 = ORD32.map(n => { const m = m32[n]; return mmCard("16-avos " + n, mmSlotHTML(m.h), mmSlotHTML(m.a)); }).join("");
-  const c16 = ORD16.map(n => { const m = m16[n]; return mmCard("Oitavas " + n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1])); }).join("");
-  const cqf = ORDQF.map(n => { const m = mqf[n]; return mmCard("Quartas " + n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1])); }).join("");
-  const csf = ORDSF.map(n => { const m = msf[n]; return mmCard("Semi " + n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1])); }).join("");
-  const cf  = mmCard("🏆 Final", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"));
+  const c32 = ORD32.map(n => { const m = m32[n]; return mmCard("16-avos " + n, mmSlotHTML(m.h), mmSlotHTML(m.a), D32[n]); }).join("");
+  const c16 = ORD16.map(n => { const m = m16[n]; return mmCard("Oitavas " + n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1]), D16[n]); }).join("");
+  const cqf = ORDQF.map(n => { const m = mqf[n]; return mmCard("Quartas " + n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1]), DQF[n]); }).join("");
+  const csf = ORDSF.map(n => { const m = msf[n]; return mmCard("Semi " + n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1]), DSF[n]); }).join("");
+  const cf  = mmCard("🏆 Final", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"), DFINAL);
   const round = (titulo, html) => `<div class="mm-round"><h4>${titulo}</h4><div class="mm-round-body">${html}</div></div>`;
   el.innerHTML = round("16-avos", c32) + round("Oitavas", c16) + round("Quartas", cqf) + round("Semis", csf) + round("Final", cf);
   // 3º lugar fora da árvore
   el.insertAdjacentHTML("beforeend",
-    `<div class="mm-round"><h4>3º lugar</h4><div class="mm-third">${('<div class="mm-match"><span class="mm-n">3º lugar</span>' + mmWinHTML("Perdedor Semi 1") + mmWinHTML("Perdedor Semi 2") + '</div>')}</div></div>`);
+    `<div class="mm-round"><h4>3º lugar</h4><div class="mm-third">${('<div class="mm-match"><span class="mm-n">3º lugar</span>' + mmWinHTML("Perdedor Semi 1") + mmWinHTML("Perdedor Semi 2") + '<span class="mm-d">' + koDataHora(D3RD) + '</span></div>')}</div></div>`);
 }
 
 // ===== ABA STATS =====
