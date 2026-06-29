@@ -969,30 +969,33 @@ SF.forEach(m => KO.push({iso: DSF[m.n], round: "Semifinais", h: "Venc. Quartas "
 KO.push({iso: D3RD, round: "3º lugar", h: "Perdedor Semi 1", a: "Perdedor Semi 2"});
 KO.push({iso: DFINAL, round: "Final", h: "Venc. Semi 1", a: "Venc. Semi 2"});
 // resolve um slot do mata-mata para uma linha (bandeira+nome projetado ou placeholder)
-function koLinha(slot){
+function koLinha(slot, ta){
   if (Array.isArray(slot)){
     if (slot[0] === "1" || slot[0] === "2"){
       const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1];
       return `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="nome">${T[code][1]}</span><span class="ko-slot">${slot[0]}${slot[1]}</span>`;
     }
+    const a = ta && ta[slot[1]];
+    if (a) return `<img src="https://flagcdn.com/w40/${T[a.code][0]}.png" alt=""><span class="nome">${T[a.code][1]}</span><span class="ko-slot">3º${a.L}</span>`;
     return `<span class="nome ko-ph2">3º ${slot[1]}</span>`;
   }
   return `<span class="nome ko-ph2">${slot}</span>`;
 }
-function koJogoHTML(fx){
+function koJogoHTML(fx, ta){
   const hr = new Date(fx.iso).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":", "h");
   return `<div class="jogo ko">
     <div class="jogo-top">
       <div class="hora">${hr}</div>
       <div class="times">
-        <div class="linha-time">${koLinha(fx.h)}</div>
-        <div class="linha-time">${koLinha(fx.a)}</div>
+        <div class="linha-time">${koLinha(fx.h, ta)}</div>
+        <div class="linha-time">${koLinha(fx.a, ta)}</div>
       </div>
     </div>
   </div>`;
 }
 // dias do mata-mata agrupados (no fuso local), em ordem cronológica
 function renderKO(){
+  const ta = assignThirds();
   const byDay = {};
   KO.forEach(fx => {
     const d = new Date(fx.iso);
@@ -1007,7 +1010,7 @@ function renderKO(){
     const rod = rounds.length === 1 ? rounds[0] : "Mata-mata";
     return `<section class="dia"><div class="dia-head ko-head">
         <h2>${dd}</h2><span class="wd">${WD[d.getDay()]}</span><span class="rod ko-rod">${rod}</span>
-      </div>${fxs.map(koJogoHTML).join("")}</section>`;
+      </div>${fxs.map(fx => koJogoHTML(fx, ta)).join("")}</section>`;
   }).join("");
 }
 
@@ -1015,14 +1018,47 @@ function ordemGrupo(letra){
   const stats = statsDoGrupo(G[letra]);
   return [...G[letra]].sort((x,y) => cmpSel(x, y, stats[x], stats[y]));
 }
+// atribui os 8 melhores 3º colocados às vagas do mata-mata (respeita de quais
+// grupos cada vaga aceita). Retorna mapa: string-de-grupos -> {code, L}
+function assignThirds(){
+  const arr = Object.keys(G).map(L => {
+    const st = statsDoGrupo(G[L]);
+    const o = [...G[L]].sort((x,y) => cmpSel(x, y, st[x], st[y]));
+    return {L, code: o[2], s: st[o[2]]};
+  });
+  arr.sort((a,b) => cmpSel(a.code, b.code, a.s, b.s));
+  const codeByL = {}; arr.slice(0, 8).forEach(t => codeByL[t.L] = t.code); // top 8 classificam
+  const slots = R32.filter(m => m.a[0] === "3").map(m => ({key: m.a[1], allowed: m.a[1].split("/")}));
+  const used = {}, res = {};
+  function bt(i){
+    if (i >= slots.length) return true;
+    for (const L of slots[i].allowed){
+      if (codeByL[L] && !used[L]){
+        used[L] = true; res[slots[i].key] = L;
+        if (bt(i + 1)) return true;
+        used[L] = false; delete res[slots[i].key];
+      }
+    }
+    return false;
+  }
+  if (!bt(0)){ // sem casamento perfeito (cenário provisório): preenche o que der
+    Object.keys(res).forEach(k => delete res[k]); Object.keys(used).forEach(k => delete used[k]);
+    slots.forEach(sl => { for (const L of sl.allowed){ if (codeByL[L] && !used[L]){ used[L] = true; res[sl.key] = L; break; } } });
+  }
+  const out = {};
+  slots.forEach(sl => { if (res[sl.key]) out[sl.key] = {code: codeByL[res[sl.key]], L: res[sl.key]}; });
+  return out;
+}
 // nomes curtos para o bracket (multi-palavra)
 const MM_ABBR = {USA:"EUA", KOR:"C. Sul", CIV:"C. Marfim", KSA:"A. Saudita", NZL:"N. Zelândia", CPV:"C. Verde", RSA:"Á. Sul", COD:"RD Congo"};
 function mmNome(code){ return MM_ABBR[code] || T[code][1]; }
-function mmSlotHTML(slot){
+function mmSlotHTML(slot, ta){
   if (slot[0] === "1" || slot[0] === "2"){
     const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1];
     return `<span class="mm-team"><span class="mm-slot">${slot[0]}${slot[1]}</span><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span></span>`;
   }
+  const a = ta && ta[slot[1]];
+  if (a) return `<span class="mm-team"><span class="mm-slot">3º${a.L}</span><img src="https://flagcdn.com/w40/${T[a.code][0]}.png" alt=""><span class="mm-nm">${mmNome(a.code)}</span></span>`;
   return `<span class="mm-ph">3º ${slot[1]}</span>`;
 }
 function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
@@ -1039,7 +1075,8 @@ function renderMata(){
   const el = document.getElementById("mataBracket");
   const byN = a => { const o = {}; a.forEach(x => o[x.n] = x); return o; };
   const m32 = byN(R32), m16 = byN(R16), mqf = byN(QF), msf = byN(SF);
-  const c32 = ORD32.map(n => { const m = m32[n]; return mmCard("16-avos " + n, mmSlotHTML(m.h), mmSlotHTML(m.a), D32[n]); }).join("");
+  const ta = assignThirds();
+  const c32 = ORD32.map(n => { const m = m32[n]; return mmCard("16-avos " + n, mmSlotHTML(m.h, ta), mmSlotHTML(m.a, ta), D32[n]); }).join("");
   const c16 = ORD16.map(n => { const m = m16[n]; return mmCard("Oitavas " + n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1]), D16[n]); }).join("");
   const cqf = ORDQF.map(n => { const m = mqf[n]; return mmCard("Quartas " + n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1]), DQF[n]); }).join("");
   const csf = ORDSF.map(n => { const m = msf[n]; return mmCard("Semi " + n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1]), DSF[n]); }).join("");
