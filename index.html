@@ -747,53 +747,43 @@ function render(){
   const openDaySet = new Set();
   lista.querySelectorAll(".dia-acc[open]").forEach(el => { if (el.dataset.d) openDaySet.add(el.dataset.d); });
   const agora = new Date();
-  const porDia = {};
-  M.filter(visivel).forEach(m => { (porDia[m[0]] = porDia[m[0]] || []).push(m); });
-
-  const dias = Object.keys(porDia).map(Number).sort((a,b)=>a-b);
-  const hojeN = brtDayNum(agora);
-  const diaHTML = d => {
-    const jogos = porDia[d];
-    const r = jogos[0][2];
-    const data = new Date(2026, 5, d);
-    const hoje = (20260600 + d === hojeN) ? " · HOJE 🔥" : "";
-    return `<section class="dia">
-      <div class="dia-head r${r}">
-        <h2>${String(d).padStart(2,"0")}/06</h2>
-        <span class="wd">${WD[data.getDay()]}${hoje}</span>
-        <span class="rod r${r}">Rodada ${r}</span>
-      </div>
-      ${jogos.map(m => jogoHTML(m, agora)).join("")}
-    </section>`;
-  };
-  // dia anterior: drill-down próprio (só a barra da data; abre ao tocar)
-  const diaAcc = d => {
-    const jogos = porDia[d];
-    const r = jogos[0][2];
-    const data = new Date(2026, 5, d);
-    return `<details class="dia-acc" data-d="${d}">
-      <summary class="dia-sum r${r}">
-        <span class="ds-date">${String(d).padStart(2,"0")}/06</span>
-        <span class="ds-wd">${WD[data.getDay()]}</span>
-        <span class="rod r${r}">Rodada ${r}</span>
-        <span class="ds-cnt">${jogos.length} jogo${jogos.length > 1 ? "s" : ""} ›</span>
-      </summary>
-      <div class="dia-acc-body">${jogos.map(m => jogoHTML(m, agora)).join("")}</div>
-    </details>`;
-  };
-  // dias que já passaram (calendário de Brasília) ficam recolhidos; a página abre em hoje + próximos
-  const passados = dias.filter(d => 20260600 + d < hojeN);
-  const atuais = dias.filter(d => 20260600 + d >= hojeN);
-  let html = "";
-  if (passados.length){
-    const n = passados.reduce((acc, d) => acc + porDia[d].length, 0);
-    // mais recente primeiro; cada dia é um drill-down separado
-    const accs = passados.slice().reverse().map(diaAcc).join("");
-    html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${accs}</details>`;
+  const todayNum = agora.getFullYear() * 10000 + (agora.getMonth() + 1) * 100 + agora.getDate();
+  const pad = n => String(n).padStart(2, "0");
+  const dayItems = []; // {dn(AAAAMMDD), dd, wd, rod, cls, cnt, body}
+  // jogos de grupo (filtrados)
+  const porDiaG = {};
+  M.filter(visivel).forEach(m => { (porDiaG[m[0]] = porDiaG[m[0]] || []).push(m); });
+  Object.keys(porDiaG).map(Number).forEach(d => {
+    const jogos = porDiaG[d], r = jogos[0][2], data = new Date(2026, 5, d);
+    dayItems.push({dn: 20260600 + d, dd: pad(d) + "/06", wd: WD[data.getDay()],
+      rod: `<span class="rod r${r}">Rodada ${r}</span>`, cls: "r" + r, cnt: jogos.length,
+      body: jogos.map(m => jogoHTML(m, agora)).join("")});
+  });
+  // mata-mata: só na visão sem filtros (não é "rodada" nem tem canal específico)
+  if (fRodada === 0 && fCanal === "all" && !fBusca){
+    const ta = assignThirds();
+    const byK = {};
+    KO.forEach(fx => { const dt = new Date(fx.iso); const dn = dt.getFullYear()*10000 + (dt.getMonth()+1)*100 + dt.getDate(); (byK[dn] = byK[dn] || []).push(fx); });
+    Object.keys(byK).map(Number).forEach(dn => {
+      const fxs = byK[dn].sort((a,b) => new Date(a.iso) - new Date(b.iso));
+      const dt = new Date(fxs[0].iso);
+      const rounds = [...new Set(fxs.map(f => f.round))], rod = rounds.length === 1 ? rounds[0] : "Mata-mata";
+      dayItems.push({dn, dd: pad(dt.getDate()) + "/" + pad(dt.getMonth()+1), wd: WD[dt.getDay()],
+        rod: `<span class="rod ko-rod">${rod}</span>`, cls: "ko-head", cnt: fxs.length,
+        body: fxs.map(fx => koJogoHTML(fx, ta)).join("")});
+    });
   }
-  html += atuais.map(diaHTML).join("");
-  // mata-mata: aparece na visão sem filtros (não é "rodada" nem tem canal definido)
-  if (fRodada === 0 && fCanal === "all" && !fBusca) html += renderKO();
+  const sec = it => `<section class="dia"><div class="dia-head ${it.cls}"><h2>${it.dd}</h2><span class="wd">${it.wd}${it.dn === todayNum ? " · HOJE 🔥" : ""}</span>${it.rod}</div>${it.body}</section>`;
+  const acc = it => `<details class="dia-acc" data-d="${it.dn}"><summary class="dia-sum ${it.cls}"><span class="ds-date">${it.dd}</span><span class="ds-wd">${it.wd}</span>${it.rod}<span class="ds-cnt">${it.cnt} jogo${it.cnt > 1 ? "s" : ""} ›</span></summary><div class="dia-acc-body">${it.body}</div></details>`;
+  // já finalizados (data < hoje) ficam recolhidos em "Dias anteriores"; hoje + próximos no fluxo
+  const past = dayItems.filter(x => x.dn < todayNum).sort((a,b) => b.dn - a.dn);
+  const cur  = dayItems.filter(x => x.dn >= todayNum).sort((a,b) => a.dn - b.dn);
+  let html = "";
+  if (past.length){
+    const n = past.reduce((s, x) => s + x.cnt, 0);
+    html += `<details class="passado"><summary>📁 Dias anteriores — ${n} jogo${n > 1 ? "s" : ""} (toque para abrir)</summary>${past.map(acc).join("")}</details>`;
+  }
+  html += cur.map(sec).join("");
   lista.innerHTML = html || '<p class="vazio">Nenhum jogo encontrado com esses filtros. 🤷</p>';
   // reabre os dias que estavam abertos antes do refresh
   if (wasPassadoOpen){ const pd = lista.querySelector(".passado"); if (pd) pd.open = true; }
@@ -999,7 +989,7 @@ function koLinha(slot, ta){
 }
 function koJogoHTML(fx, ta){
   const hr = new Date(fx.iso).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":", "h");
-  const live = (store.__ko || {})[fx.pos];
+  const live = store[fx.pos];
   const real = live && live.hc && live.ac;   // jogo já tem os dois times definidos
   let tag = "";
   if (real && live.state === "post") tag = '<span class="fim-tag">ENCERRADO</span>';
@@ -1016,11 +1006,20 @@ function koJogoHTML(fx, ta){
     top = `<div class="linha-time">${koLinha(fx.h, ta)}</div>`;
     bot = `<div class="linha-time">${koLinha(fx.a, ta)}</div>`;
   }
-  return `<div class="jogo ko">
+  const id = fx.pos, st = live || {};
+  const fim = real && live.state === "post";
+  return `<div class="jogo ko ${st.w ? "assistido" : ""} ${real && live.state === "in" ? "aovivo" : ""}" id="${id}">
     <div class="jogo-top">
       <div class="hora">${hr}${tag}</div>
       <div class="times">${top}${bot}</div>
     </div>
+    <div class="jogo-acoes">
+      <button class="mini ${openDrawers[id]==='tv'?'on':''}" onclick="drawer('${id}','tv')">📺 Onde assistir</button>
+      <button class="mini ${openDrawers[id]==='info'?'on':''}" onclick="drawer('${id}','info')">ℹ️ Info do jogo</button>
+      ${fim ? `<a class="mini mini-hl" href="${HIGHLIGHTS_URL}" target="_blank" rel="noopener">▶️ Melhores momentos</a>` : ""}
+      <button class="mini vac" onclick="toggleW('${id}')">${st.w ? "✓ Visto!" : "Visto?"}</button>
+    </div>
+    <div class="drawer" id="dr-${id}"></div>
   </div>`;
 }
 // dias do mata-mata agrupados (no fuso local), em ordem cronológica
@@ -1097,7 +1096,7 @@ function mmRealTeam(code, score, win){
 }
 // usa dados ao vivo do mata-mata se já houver times definidos; senão a projeção/placeholder
 function mmPair(pos, fallTop, fallBot){
-  const live = (store.__ko || {})[pos];
+  const live = store[pos];
   if (live && live.hc && live.ac){
     const post = live.state === "post";
     const sc = typeof live.a === "number" && typeof live.b === "number";
@@ -1251,8 +1250,9 @@ function applyDrawer(id){
   el.innerHTML = tipo === "tv" ? tvHTML(id) : infoRender(id);
 }
 function tvHTML(id){
-  const m = findFx(id); if (!m) return "";
-  return `<div class="canais">${m[5].map(c => CANAL_URL[c]
+  const m = findFx(id);
+  const canais = m ? m[5] : ["caze"]; // mata-mata: CazéTV transmite todos os jogos
+  return `<div class="canais">${canais.map(c => CANAL_URL[c]
     ? `<a class="badge b-${c}" href="${CANAL_URL[c]}" target="_blank" rel="noopener" title="${CANAL_DICA[c]}">▶ ${CANAL_NOME[c]}</a>`
     : `<span class="badge b-${c}">${CANAL_NOME[c]}</span>`).join("")}</div>
     <p class="dr-row ctx">Toque no canal para abrir a transmissão ao vivo.</p>`;
@@ -1402,8 +1402,8 @@ async function infoEnsure(id){
   }
 }
 async function fetchWeather(id, coords){
-  const m = findFx(id); if (!m) return false;
-  const dt = matchDate(m);
+  const m = findFx(id);
+  const dt = m ? matchDate(m) : new Date((store[id] || {}).iso || Date.now()); // mata-mata usa a data do evento
   const hourISO = dt.toISOString().slice(0,13) + ":00";
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords[0]}&longitude=${coords[1]}&hourly=temperature_2m,weather_code,wind_speed_10m&timezone=GMT&past_days=5&forecast_days=16`;
@@ -1543,13 +1543,16 @@ async function atualizarKO(){
     const r = await fetch(KO_URL);
     if (!r.ok) return;
     const j = await r.json();
-    store.__ko = store.__ko || {};
     (j.events || []).forEach(ev => {
       const pos = KO_ID[ev.id]; if (!pos) return;
       const c = ev.competitions && ev.competitions[0]; if (!c || !c.competitors) return;
       const home = c.competitors.find(x => x.homeAway === "home");
       const away = c.competitors.find(x => x.homeAway === "away");
-      const rec = store.__ko[pos] = store.__ko[pos] || {};
+      const rec = store[pos] = store[pos] || {};
+      rec.ko = true;
+      rec.eid = ev.id;            // pra gaveta (escalações/stats/súmula)
+      rec.iso = ev.date;          // data/hora (fuso local + previsão do tempo)
+      if (c.venue){ rec.vn = c.venue.fullName; rec.vc = (c.venue.address && c.venue.address.city) || ""; }
       rec.hc = codeFromTeam(home && home.team);   // null enquanto for slot (2A/3RD/RD32...)
       rec.ac = codeFromTeam(away && away.team);
       const state = ev.status && ev.status.type ? ev.status.type.state : null;
@@ -1739,7 +1742,7 @@ function tick(){
   M.forEach(m => cand.push({d: matchDate(m), lbl: `${T[m[3]][1]} × ${T[m[4]][1]}`, extra: m[5].map(c => CANAL_NOME[c]).join(", ")}));
   const ta = assignThirds();
   KO.forEach(fx => {
-    const live = (store.__ko || {})[fx.pos];
+    const live = store[fx.pos];
     const h = (live && live.hc) ? T[live.hc][1] : koNomeSlot(fx.h, ta);
     const a = (live && live.ac) ? T[live.ac][1] : koNomeSlot(fx.a, ta);
     cand.push({d: new Date(fx.iso), lbl: `${h} × ${a}`, extra: fx.round});
@@ -1784,7 +1787,7 @@ function textoHoje(){
   // jogos do mata-mata de hoje
   const ta = assignThirds();
   KO.forEach(fx => { const dt = new Date(fx.iso); if (dayKey(dt) !== hoje) return;
-    const live = (store.__ko || {})[fx.pos];
+    const live = store[fx.pos];
     const h = (live && live.hc) ? nomeMsgKO(live.hc) : koNomeSlot(fx.h, ta);
     const w = (live && live.ac) ? nomeMsgKO(live.ac) : koNomeSlot(fx.a, ta);
     items.push({dt, state: live && live.state, a: live && live.a, b: live && live.b, h, w, extra: fx.round});
