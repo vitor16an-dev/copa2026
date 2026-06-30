@@ -989,26 +989,20 @@ function koLinha(slot, ta){
 }
 function koJogoHTML(fx, ta){
   const hr = new Date(fx.iso).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":", "h");
-  const live = store[fx.pos];
-  const real = live && live.hc && live.ac;   // jogo já tem os dois times definidos
+  const live = store[fx.pos] || {};
+  const post = live.state === "post", inplay = live.state === "in";
   let tag = "";
-  if (real && live.state === "post") tag = '<span class="fim-tag">ENCERRADO</span>';
-  else if (real && live.state === "in") tag = `<span class="live-tag">● ${live.det || "AO VIVO"}</span>`;
-  const sc = real && typeof live.a === "number" && typeof live.b === "number";
+  if (post) tag = '<span class="fim-tag">ENCERRADO</span>';
+  else if (inplay) tag = `<span class="live-tag">● ${live.det || "AO VIVO"}</span>`;
+  const sc = inplay || post;
   const teamRow = (code, score, win) =>
     `<div class="linha-time${win ? " ko-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="nome">${T[code][1]}</span>${score != null ? `<span class="ko-score">${score}</span>` : ""}</div>`;
-  let top, bot;
-  if (real){
-    const post = live.state === "post";
-    top = teamRow(live.hc, sc ? live.a : null, post && live.win === "h");
-    bot = teamRow(live.ac, sc ? live.b : null, post && live.win === "a");
-  } else {
-    top = `<div class="linha-time">${koLinha(fx.h, ta)}</div>`;
-    bot = `<div class="linha-time">${koLinha(fx.a, ta)}</div>`;
-  }
-  const id = fx.pos, st = live || {};
-  const fim = real && live.state === "post";
-  return `<div class="jogo ko ${st.w ? "assistido" : ""} ${real && live.state === "in" ? "aovivo" : ""}" id="${id}">
+  // resolve cada lado: time real se já definido, senão projeção/placeholder
+  const top = live.hc ? teamRow(live.hc, sc && typeof live.a === "number" ? live.a : null, post && live.win === "h") : `<div class="linha-time">${koLinha(fx.h, ta)}</div>`;
+  const bot = live.ac ? teamRow(live.ac, sc && typeof live.b === "number" ? live.b : null, post && live.win === "a") : `<div class="linha-time">${koLinha(fx.a, ta)}</div>`;
+  const id = fx.pos, st = live;
+  const fim = post;
+  return `<div class="jogo ko ${st.w ? "assistido" : ""} ${inplay ? "aovivo" : ""}" id="${id}">
     <div class="jogo-top">
       <div class="hora">${hr}${tag}</div>
       <div class="times">${top}${bot}</div>
@@ -1094,16 +1088,16 @@ function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
 function mmRealTeam(code, score, win){
   return `<span class="mm-team${win ? " mm-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span>${score != null ? `<b class="mm-sc">${score}</b>` : ""}</span>`;
 }
-// usa dados ao vivo do mata-mata se já houver times definidos; senão a projeção/placeholder
+// usa dados ao vivo do mata-mata; resolve cada lado separadamente (1 time já definido
+// numa fase seguinte aparece mesmo com o adversário ainda indefinido)
 function mmPair(pos, fallTop, fallBot){
   const live = store[pos];
-  if (live && live.hc && live.ac){
-    const post = live.state === "post";
-    const sc = typeof live.a === "number" && typeof live.b === "number";
-    return {top: mmRealTeam(live.hc, sc ? live.a : null, post && live.win === "h"),
-            bot: mmRealTeam(live.ac, sc ? live.b : null, post && live.win === "a"), live};
-  }
-  return {top: fallTop, bot: fallBot, live: null};
+  if (!live || (!live.hc && !live.ac)) return {top: fallTop, bot: fallBot, live: null};
+  const post = live.state === "post";
+  const sc = (live.state === "in" || post);
+  const top = live.hc ? mmRealTeam(live.hc, sc && typeof live.a === "number" ? live.a : null, post && live.win === "h") : fallTop;
+  const bot = live.ac ? mmRealTeam(live.ac, sc && typeof live.b === "number" ? live.b : null, post && live.win === "a") : fallBot;
+  return {top, bot, live};
 }
 function mmCard(num, topHTML, botHTML, iso, live){
   const data = iso ? `<span class="mm-d">${koDataHora(iso)}</span>` : "";
