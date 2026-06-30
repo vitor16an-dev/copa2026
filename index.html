@@ -166,6 +166,14 @@
   .jogo.ko .nome{font-weight:400;}
   .ko-slot{color:var(--accent2); font-size:10px; font-weight:700; margin-left:6px;}
   .ko-ph2{color:#999;}
+  .ko-score{margin-left:auto; min-width:24px; text-align:center; background:#000; border:1px solid var(--cinza2); color:var(--accent2); border-radius:6px; padding:2px 0; font-size:13px; font-weight:600;}
+  .linha-time.ko-win .nome{font-weight:700; color:#fff;}
+  .linha-time.ko-win .ko-score{border-color:var(--ok); color:var(--ok);}
+  /* placar/vencedor/ao vivo no bracket */
+  .mm-sc{margin-left:auto; color:var(--accent2); font-weight:700; font-size:13px;}
+  .mm-win .mm-nm{font-weight:700;}
+  .mm-win .mm-sc{color:var(--ok);}
+  .mm-live{display:block; font-size:9px; color:var(--accent); font-weight:700; letter-spacing:.5px; margin-top:4px;}
 
   .times{display:flex; flex-direction:column; gap:6px;}
   .linha-time{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:400;}
@@ -591,6 +599,14 @@ const HIGHLIGHTS_URL = "https://www.youtube.com/playlist?list=PLsFWLnYCEXEVNzCnk
 const WD = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const DUR_MS = 2 * 60 * 60 * 1000;
 const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260627&limit=100";
+const KO_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260628-20260719&limit=100";
+// id do evento ESPN -> posição na chave (pra casar placar ao vivo do mata-mata)
+const KO_ID = {
+  "760486":"32_1","760489":"32_2","760488":"32_3","760487":"32_4","760492":"32_5","760490":"32_6","760491":"32_7","760495":"32_8",
+  "760494":"32_9","760493":"32_10","760496":"32_11","760497":"32_12","760498":"32_13","760500":"32_14","760501":"32_15","760499":"32_16",
+  "760503":"16_1","760502":"16_2","760504":"16_3","760505":"16_4","760506":"16_5","760507":"16_6","760509":"16_7","760508":"16_8",
+  "760510":"QF_1","760511":"QF_2","760512":"QF_3","760513":"QF_4","760514":"SF_1","760515":"SF_2","760516":"3RD","760517":"FINAL"
+};
 
 // nomes da ESPN (inglês) -> código interno
 const ESPN_MAP = {
@@ -962,12 +978,12 @@ function koDataHora(iso){
 }
 // lista de jogos do mata-mata (pra aba Jogos), com data e confronto projetado
 const KO = [];
-R32.forEach(m => KO.push({iso: D32[m.n], round: "16-avos", h: m.h, a: m.a}));
-R16.forEach(m => KO.push({iso: D16[m.n], round: "Oitavas", h: "Venc. 16-avos " + m.f[0], a: "Venc. 16-avos " + m.f[1]}));
-QF.forEach(m => KO.push({iso: DQF[m.n], round: "Quartas", h: "Venc. Oitavas " + m.f[0], a: "Venc. Oitavas " + m.f[1]}));
-SF.forEach(m => KO.push({iso: DSF[m.n], round: "Semifinais", h: "Venc. Quartas " + m.f[0], a: "Venc. Quartas " + m.f[1]}));
-KO.push({iso: D3RD, round: "3º lugar", h: "Perdedor Semi 1", a: "Perdedor Semi 2"});
-KO.push({iso: DFINAL, round: "Final", h: "Venc. Semi 1", a: "Venc. Semi 2"});
+R32.forEach(m => KO.push({pos:"32_"+m.n, iso: D32[m.n], round: "16-avos", h: m.h, a: m.a}));
+R16.forEach(m => KO.push({pos:"16_"+m.n, iso: D16[m.n], round: "Oitavas", h: "Venc. 16-avos " + m.f[0], a: "Venc. 16-avos " + m.f[1]}));
+QF.forEach(m => KO.push({pos:"QF_"+m.n, iso: DQF[m.n], round: "Quartas", h: "Venc. Oitavas " + m.f[0], a: "Venc. Oitavas " + m.f[1]}));
+SF.forEach(m => KO.push({pos:"SF_"+m.n, iso: DSF[m.n], round: "Semifinais", h: "Venc. Quartas " + m.f[0], a: "Venc. Quartas " + m.f[1]}));
+KO.push({pos:"3RD", iso: D3RD, round: "3º lugar", h: "Perdedor Semi 1", a: "Perdedor Semi 2"});
+KO.push({pos:"FINAL", iso: DFINAL, round: "Final", h: "Venc. Semi 1", a: "Venc. Semi 2"});
 // resolve um slot do mata-mata para uma linha (bandeira+nome projetado ou placeholder)
 function koLinha(slot, ta){
   if (Array.isArray(slot)){
@@ -983,13 +999,27 @@ function koLinha(slot, ta){
 }
 function koJogoHTML(fx, ta){
   const hr = new Date(fx.iso).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}).replace(":", "h");
+  const live = (store.__ko || {})[fx.pos];
+  const real = live && live.hc && live.ac;   // jogo já tem os dois times definidos
+  let tag = "";
+  if (real && live.state === "post") tag = '<span class="fim-tag">ENCERRADO</span>';
+  else if (real && live.state === "in") tag = `<span class="live-tag">● ${live.det || "AO VIVO"}</span>`;
+  const sc = real && typeof live.a === "number" && typeof live.b === "number";
+  const teamRow = (code, score, win) =>
+    `<div class="linha-time${win ? " ko-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="nome">${T[code][1]}</span>${score != null ? `<span class="ko-score">${score}</span>` : ""}</div>`;
+  let top, bot;
+  if (real){
+    const post = live.state === "post";
+    top = teamRow(live.hc, sc ? live.a : null, post && live.win === "h");
+    bot = teamRow(live.ac, sc ? live.b : null, post && live.win === "a");
+  } else {
+    top = `<div class="linha-time">${koLinha(fx.h, ta)}</div>`;
+    bot = `<div class="linha-time">${koLinha(fx.a, ta)}</div>`;
+  }
   return `<div class="jogo ko">
     <div class="jogo-top">
-      <div class="hora">${hr}</div>
-      <div class="times">
-        <div class="linha-time">${koLinha(fx.h, ta)}</div>
-        <div class="linha-time">${koLinha(fx.a, ta)}</div>
-      </div>
+      <div class="hora">${hr}${tag}</div>
+      <div class="times">${top}${bot}</div>
     </div>
   </div>`;
 }
@@ -1062,9 +1092,24 @@ function mmSlotHTML(slot, ta){
   return `<span class="mm-ph">3º ${slot[1]}</span>`;
 }
 function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
-function mmCard(num, topHTML, botHTML, iso){
+function mmRealTeam(code, score, win){
+  return `<span class="mm-team${win ? " mm-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span>${score != null ? `<b class="mm-sc">${score}</b>` : ""}</span>`;
+}
+// usa dados ao vivo do mata-mata se já houver times definidos; senão a projeção/placeholder
+function mmPair(pos, fallTop, fallBot){
+  const live = (store.__ko || {})[pos];
+  if (live && live.hc && live.ac){
+    const post = live.state === "post";
+    const sc = typeof live.a === "number" && typeof live.b === "number";
+    return {top: mmRealTeam(live.hc, sc ? live.a : null, post && live.win === "h"),
+            bot: mmRealTeam(live.ac, sc ? live.b : null, post && live.win === "a"), live};
+  }
+  return {top: fallTop, bot: fallBot, live: null};
+}
+function mmCard(num, topHTML, botHTML, iso, live){
   const data = iso ? `<span class="mm-d">${koDataHora(iso)}</span>` : "";
-  return `<div class="mm-match-wrap"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}${data}</div></div>`;
+  const badge = (live && live.state === "in") ? `<span class="mm-live">● ${live.det || "AO VIVO"}</span>` : "";
+  return `<div class="mm-match-wrap"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}${badge}${data}</div></div>`;
 }
 // ordem planar (igual à ESPN): cada par de confrontos alimenta o próximo, centralizado
 const ORD32 = [2,5,1,3,11,12,9,10,4,6,7,8,14,16,13,15];
@@ -1076,11 +1121,12 @@ function renderMata(){
   const byN = a => { const o = {}; a.forEach(x => o[x.n] = x); return o; };
   const m32 = byN(R32), m16 = byN(R16), mqf = byN(QF), msf = byN(SF);
   const ta = assignThirds();
-  const c32 = ORD32.map(n => { const m = m32[n]; return mmCard("16-avos " + n, mmSlotHTML(m.h, ta), mmSlotHTML(m.a, ta), D32[n]); }).join("");
-  const c16 = ORD16.map(n => { const m = m16[n]; return mmCard("Oitavas " + n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1]), D16[n]); }).join("");
-  const cqf = ORDQF.map(n => { const m = mqf[n]; return mmCard("Quartas " + n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1]), DQF[n]); }).join("");
-  const csf = ORDSF.map(n => { const m = msf[n]; return mmCard("Semi " + n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1]), DSF[n]); }).join("");
-  const cf  = mmCard("🏆 Final", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"), DFINAL);
+  const c32 = ORD32.map(n => { const m = m32[n]; const p = mmPair("32_"+n, mmSlotHTML(m.h, ta), mmSlotHTML(m.a, ta)); return mmCard("16-avos " + n, p.top, p.bot, D32[n], p.live); }).join("");
+  const c16 = ORD16.map(n => { const m = m16[n]; const p = mmPair("16_"+n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1])); return mmCard("Oitavas " + n, p.top, p.bot, D16[n], p.live); }).join("");
+  const cqf = ORDQF.map(n => { const m = mqf[n]; const p = mmPair("QF_"+n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1])); return mmCard("Quartas " + n, p.top, p.bot, DQF[n], p.live); }).join("");
+  const csf = ORDSF.map(n => { const m = msf[n]; const p = mmPair("SF_"+n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1])); return mmCard("Semi " + n, p.top, p.bot, DSF[n], p.live); }).join("");
+  const pf = mmPair("FINAL", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"));
+  const cf  = mmCard("🏆 Final", pf.top, pf.bot, DFINAL, pf.live);
   const round = (titulo, html) => `<div class="mm-round"><h4>${titulo}</h4><div class="mm-round-body">${html}</div></div>`;
   el.innerHTML = round("16-avos", c32) + round("Oitavas", c16) + round("Quartas", cqf) + round("Semis", csf) + round("Final", cf);
   // 3º lugar fora da árvore
@@ -1491,6 +1537,33 @@ function compStat(comp, abbr){
   const s = comp.statistics.find(x => x.abbreviation === abbr);
   return s ? (parseFloat(s.displayValue) || 0) : 0;
 }
+// busca placar/times/status dos jogos do mata-mata (ao vivo) e guarda por posição
+async function atualizarKO(){
+  try {
+    const r = await fetch(KO_URL);
+    if (!r.ok) return;
+    const j = await r.json();
+    store.__ko = store.__ko || {};
+    (j.events || []).forEach(ev => {
+      const pos = KO_ID[ev.id]; if (!pos) return;
+      const c = ev.competitions && ev.competitions[0]; if (!c || !c.competitors) return;
+      const home = c.competitors.find(x => x.homeAway === "home");
+      const away = c.competitors.find(x => x.homeAway === "away");
+      const rec = store.__ko[pos] = store.__ko[pos] || {};
+      rec.hc = codeFromTeam(home && home.team);   // null enquanto for slot (2A/3RD/RD32...)
+      rec.ac = codeFromTeam(away && away.team);
+      const state = ev.status && ev.status.type ? ev.status.type.state : null;
+      rec.state = state;
+      rec.det = (state === "in") ? (ev.status.displayClock || ev.status.type.shortDetail || "") : "";
+      if (state === "in" || state === "post"){
+        const a = Number(home.score), b = Number(away.score);
+        if (!isNaN(a)) rec.a = a;
+        if (!isNaN(b)) rec.b = b;
+        rec.win = home.winner ? "h" : (away.winner ? "a" : null); // inclui decisão por pênaltis
+      }
+    });
+  } catch(e){}
+}
 async function atualizar(){
   try {
     const res = await fetch(ESPN_URL);
@@ -1619,6 +1692,7 @@ async function atualizar(){
     }));
     for (const k in store.__sum) (store.__sum[k].a || []).forEach(p => { const kk = p[0] + "|" + (p[1] || ""); agg.assist[kk] = (agg.assist[kk] || 0) + 1; });
     store.__stats = agg;
+    await atualizarKO(); // placar ao vivo do mata-mata
     store.__updatedAt = Date.now();
     save(); render(); renderGrupos(); renderStats();
   } catch(e){
@@ -1651,11 +1725,26 @@ document.getElementById("busca").addEventListener("input", e => {
 });
 
 // ===== PRÓXIMO JOGO + CONTAGEM =====
+// nome de um slot do mata-mata na projeção (pra usar no "próximo jogo")
+function koNomeSlot(slot, ta){
+  if (Array.isArray(slot)){
+    if (slot[0] === "1" || slot[0] === "2"){ const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1]; return T[code][1]; }
+    const a = ta && ta[slot[1]]; return a ? T[a.code][1] : ("3º " + slot[1]);
+  }
+  return slot;
+}
 function tick(){
   const agora = new Date();
-  const futuros = M.map(m => ({m, d: matchDate(m)}))
-                   .filter(x => x.d.getTime() + DUR_MS > agora.getTime())
-                   .sort((a,b) => a.d - b.d);
+  const cand = [];
+  M.forEach(m => cand.push({d: matchDate(m), lbl: `${T[m[3]][1]} × ${T[m[4]][1]}`, extra: m[5].map(c => CANAL_NOME[c]).join(", ")}));
+  const ta = assignThirds();
+  KO.forEach(fx => {
+    const live = (store.__ko || {})[fx.pos];
+    const h = (live && live.hc) ? T[live.hc][1] : koNomeSlot(fx.h, ta);
+    const a = (live && live.ac) ? T[live.ac][1] : koNomeSlot(fx.a, ta);
+    cand.push({d: new Date(fx.iso), lbl: `${h} × ${a}`, extra: fx.round});
+  });
+  const futuros = cand.filter(x => x.d.getTime() + DUR_MS > agora.getTime()).sort((a,b) => a.d - b.d);
   const box = document.getElementById("nextBox");
   if (!futuros.length){ box.style.display = "none"; return; }
   box.style.display = "flex";
@@ -1663,10 +1752,9 @@ function tick(){
   // todos os jogos que começam no mesmo horário (simultâneos)
   const simult = futuros.filter(x => x.d.getTime() === d.getTime());
   box.querySelector(".lbl").textContent = simult.length > 1 ? "⚽ Próximos jogos" : "⚽ Próximo jogo";
-  document.getElementById("nextGame").innerHTML = simult.map(({m}) => {
-    const canais = m[5].map(c => CANAL_NOME[c]).join(", ");
-    return `${T[m[3]][1]} × ${T[m[4]][1]} — ${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} às ${horaLocal(d)} (${canais})`;
-  }).join("<br>");
+  document.getElementById("nextGame").innerHTML = simult.map(x =>
+    `${x.lbl} — ${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} às ${horaLocal(d)} (${x.extra})`
+  ).join("<br>");
   const diff = d - agora;
   if (diff <= 0){
     document.getElementById("nextCd").textContent = "🔴 ROLANDO AGORA!";
@@ -1682,24 +1770,37 @@ setInterval(tick, 1000);
 // ===== COMPARTILHAR =====
 const NOME_CURTO = {KOR:"Coreia", USA:"EUA"};
 function nomeMsg(code){ return NOME_CURTO[code] || T[code][1]; }
+function nomeMsgKO(code){ return NOME_CURTO[code] || T[code][1]; }
 function textoHoje(){
   const agora = new Date();
-  const hojeN = brtDayNum(agora);
-  const d = (Math.floor(hojeN/100) === 202606 && hojeN%100 >= 11 && hojeN%100 <= 27) ? hojeN%100 : 11;
-  const jogos = M.filter(m => m[0] === d);
-  if (!jogos.length) return "Hoje não tem jogo da fase de grupos. 😢";
-  let txt = `⚽ COPA HOJE (${String(d).padStart(2,"0")}/06)\n`;
-  jogos.forEach(m => {
+  const dayKey = dt => dt.getFullYear() * 10000 + (dt.getMonth() + 1) * 100 + dt.getDate();
+  const hoje = dayKey(agora);
+  const items = [];
+  // jogos de grupo de hoje
+  M.forEach(m => { const dt = matchDate(m); if (dayKey(dt) !== hoje) return;
     const st = store[matchId(m)] || {};
-    const dt = matchDate(m);
-    const temPlacar = typeof st.a === "number" && typeof st.b === "number";
-    const fimJanela = agora > new Date(dt.getTime() + DUR_MS);
-    const fim = st.state === "post" || (!st.state && temPlacar && fimJanela);
-    const vivo = st.state === "in" || (!st.state && agora >= dt && !fimJanela);
-    const a = nomeMsg(m[3]), b = nomeMsg(m[4]);
-    if (fim && temPlacar) txt += `🏁 ${a} ${st.a}x${st.b} ${b}\n`;
-    else if (vivo) txt += temPlacar ? `🔴 ${a} ${st.a}x${st.b} ${b}\n` : `🔴 ${a} × ${b} (ao vivo)\n`;
-    else txt += `🕐 ${horaLocal(dt).replace("h00","h")} ${a} × ${b}. ${m[5].map(c=>CANAL_NOME[c]).join(", ")}\n`;
+    items.push({dt, state: st.state, a: st.a, b: st.b, h: nomeMsg(m[3]), w: nomeMsg(m[4]), extra: m[5].map(c => CANAL_NOME[c]).join(", ")});
+  });
+  // jogos do mata-mata de hoje
+  const ta = assignThirds();
+  KO.forEach(fx => { const dt = new Date(fx.iso); if (dayKey(dt) !== hoje) return;
+    const live = (store.__ko || {})[fx.pos];
+    const h = (live && live.hc) ? nomeMsgKO(live.hc) : koNomeSlot(fx.h, ta);
+    const w = (live && live.ac) ? nomeMsgKO(live.ac) : koNomeSlot(fx.a, ta);
+    items.push({dt, state: live && live.state, a: live && live.a, b: live && live.b, h, w, extra: fx.round});
+  });
+  if (!items.length) return "Hoje não tem jogo. 😢";
+  items.sort((x, y) => x.dt - y.dt);
+  let txt = `⚽ COPA HOJE (${String(agora.getDate()).padStart(2,"0")}/${String(agora.getMonth()+1).padStart(2,"0")})\n`;
+  items.forEach(it => {
+    const temPlacar = typeof it.a === "number" && typeof it.b === "number";
+    const fimJanela = agora > new Date(it.dt.getTime() + DUR_MS);
+    const fim = it.state === "post" || (!it.state && temPlacar && fimJanela);
+    const vivo = it.state === "in" || (!it.state && agora >= it.dt && !fimJanela);
+    if (fim && temPlacar) txt += `🏁 ${it.h} ${it.a}x${it.b} ${it.w}\n`;
+    else if (vivo && temPlacar) txt += `🔴 ${it.h} ${it.a}x${it.b} ${it.w}\n`;
+    else if (vivo) txt += `🔴 ${it.h} × ${it.w} (ao vivo)\n`;
+    else txt += `🕐 ${horaLocal(it.dt).replace("h00","h")} ${it.h} × ${it.w}. ${it.extra}\n`;
   });
   txt += "👉 links de transmissão de todos os jogos, tabelas e stats: tinyurl.com/copa2026aovivo";
   return txt;
