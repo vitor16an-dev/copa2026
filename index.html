@@ -171,6 +171,31 @@
   .linha-time.ko-win .ko-score{border-color:var(--ok); color:var(--ok);}
   /* placar/vencedor/ao vivo no bracket */
   .mm-sc{margin-left:auto; color:var(--accent2); font-weight:700; font-size:13px;}
+  .so{font-style:normal; font-size:10px; color:#999; font-weight:400; margin-left:3px;}
+  .ko-win .so, .mm-win .so{color:var(--ok);}
+  /* 🎯 bolão (modo palpite) */
+  .bolao-bar{margin:12px 0 4px;}
+  .mm-team.pickable{cursor:pointer; border-radius:6px; transition:.12s;}
+  .mm-team.pickable:hover{background:rgba(179,136,255,.1);}
+  .pick-sel{background:rgba(179,136,255,.16) !important;}
+  .pick-sel .mm-nm{color:var(--accent2); font-weight:700;}
+  .pick-proj .mm-nm{font-style:italic; color:#cbb8f5;}
+  .pk-dot{margin-left:auto; font-size:11px;}
+  .pk-hit{color:var(--ok); margin-left:6px; font-size:12px;}
+  .pk-miss{color:var(--r2); margin-left:6px; font-size:12px;}
+  /* ✨ caminho do time */
+  .mm-team{cursor:pointer;}
+  .mm-path .mm-match{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 0 14px rgba(179,136,255,.25);}
+  .mm-dimmed{opacity:.32;}
+  /* 🏆 modo campeão */
+  .champ-banner{position:relative; overflow:hidden; text-align:center; margin:20px 0 6px; padding:26px 14px 22px;
+    background:linear-gradient(160deg, #1a1305, var(--cinza1) 60%); border:1px solid #FFD700; border-radius:16px;}
+  .champ-banner .cb-in{display:flex; align-items:center; justify-content:center; gap:14px; font-size:30px;}
+  .champ-banner img{width:74px; height:50px; object-fit:cover; border-radius:6px; box-shadow:0 0 24px rgba(255,215,0,.5);}
+  .champ-banner h2{font-family:'Neutral Face','Poppins',sans-serif; font-weight:800; letter-spacing:3px; font-size:clamp(22px,6vw,34px); color:#FFD700; margin-top:10px;}
+  .champ-banner p{font-size:12px; letter-spacing:4px; color:#ddd; font-weight:600; margin-top:4px;}
+  .champ-banner .cf{position:absolute; top:-14px; width:7px; height:12px; border-radius:2px; opacity:.85; animation:cfall linear infinite;}
+  @keyframes cfall{to{transform:translateY(560px) rotate(540deg);}}
   .mm-win .mm-nm{font-weight:700;}
   .mm-win .mm-sc{color:var(--ok);}
   .mm-live{display:block; font-size:9px; color:var(--accent); font-weight:700; letter-spacing:.5px; margin-top:4px;}
@@ -240,6 +265,8 @@
   .out-arrow{color:var(--r2); font-size:10px;}
   /* sub-abas e estatísticas da partida */
   .info-tabs{display:flex; gap:6px; margin:12px 0 10px;}
+  .stats-sw{margin:16px 0 0; max-width:430px;}
+  .stats-sw .info-tab{padding:9px 4px; font-size:12.5px;}
   .info-tab{flex:1; background:none; border:1px solid var(--cinza2); color:#aaa; border-radius:8px; padding:7px 4px; font-size:11.5px; cursor:pointer; font-family:'Poppins',sans-serif; transition:.15s;}
   .info-tab.on{border-color:var(--accent); color:var(--accent); background:rgba(179,136,255,.08);}
   .ms-head{display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; color:#ddd; margin-bottom:10px; font-weight:600;}
@@ -449,12 +476,21 @@
   </section>
 
   <section id="abaStats">
+    <div class="info-tabs stats-sw">
+      <button class="info-tab on" id="swAll" onclick="statsView('all')">🌍 Torneio geral</button>
+      <button class="info-tab" id="swKO" onclick="statsView('ko')">🗝️ Só mata-mata</button>
+    </div>
     <div class="grupos-grid" id="statsGrid"></div>
     <p class="grupos-nota">Estatísticas calculadas dos lances oficiais de cada partida (via ESPN), <b>atualizadas automaticamente a cada minuto</b> — gols em andamento já contam. Gols contra não entram na artilharia; segundo amarelo conta como amarelo e vermelho.</p>
   </section>
 
   <section id="abaMata">
-    <p class="legenda legenda-topo">🗝️ <b style="color:var(--accent2)">Chaveamento projetado</b> — os 16-avos já mostram quem se enfrentaria <b>com a classificação de agora</b>. Vagas de 3º colocado ficam como "3º A/B/C..." (definem-se no fim da fase de grupos). As fases seguintes preenchem conforme o mata-mata acontece.</p>
+    <p class="legenda legenda-topo">🗝️ <b style="color:var(--accent2)">Chaveamento ao vivo</b> — resultados e classificados atualizam sozinhos; jogos nos pênaltis mostram a disputa entre parênteses. <b>Toque numa seleção</b> pra iluminar o caminho dela até a final — ou monte o seu bolão no modo palpite.</p>
+    <div class="acoes bolao-bar">
+      <button class="btn sec" id="btnPick" onclick="togglePick()">🎯 Fazer meu palpite</button>
+      <button class="btn" id="btnSharePick" onclick="sharePick()" style="display:none">📲 Compartilhar palpite</button>
+    </div>
+    <p class="grupos-nota" id="pickHint" style="display:none">Toque no time que você acha que <b>passa</b> em cada confronto — o palpite avança pras fases seguintes. Toque de novo pra desmarcar. Jogos já decididos mostram <b class="pk-hit">✓</b>/<b class="pk-miss">✗</b> do seu palpite. Tudo fica salvo no seu navegador.</p>
     <div class="mm-wrap"><div class="mm-bracket" id="mataBracket"></div></div>
     <p class="grupos-nota">Estrutura oficial do mata-mata da Copa 2026 (via ESPN). Arraste para o lado para ver todas as fases. Times nos 16-avos seguem a ordem atual dos grupos (pontos &gt; saldo &gt; gols).</p>
   </section>
@@ -789,6 +825,7 @@ function render(){
   if (wasPassadoOpen){ const pd = lista.querySelector(".passado"); if (pd) pd.open = true; }
   openDaySet.forEach(d => { const el = lista.querySelector('.dia-acc[data-d="' + d + '"]'); if (el) el.open = true; });
   updateProgress();
+  checkCampeao();
   // reabre gavetas que estavam abertas antes do refresh
   for (const id in openDrawers){
     if (openDrawers[id] && document.getElementById("dr-" + id)){
@@ -797,6 +834,26 @@ function render(){
     }
   }
   if (abaAtual === "grupos") renderGrupos();
+}
+
+// 🏆 modo campeão: banner de celebração quando a final terminar (idempotente)
+function checkCampeao(){
+  if (document.getElementById("champBanner")) return;
+  const f = store["FINAL"];
+  if (!f || f.state !== "post" || !f.win) return;
+  const code = f.win === "h" ? f.hc : f.ac;
+  if (!code || !T[code]) return;
+  const cores = ["#FFD700", "#B388FF", "#69F0AE", "#4FC3F7", "#FF5252", "#FFCA0A"];
+  let conf = "";
+  for (let i = 0; i < 26; i++){ // posições pseudo-aleatórias determinísticas
+    conf += `<span class="cf" style="left:${(i * 137) % 100}%;animation-delay:${((i * 61) % 50) / 10}s;animation-duration:${5 + ((i * 37) % 40) / 10}s;background:${cores[i % cores.length]}"></span>`;
+  }
+  document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
+    `<div class="champ-banner" id="champBanner">${conf}
+      <div class="cb-in">🏆<img src="https://flagcdn.com/w160/${T[code][0]}.png" alt="${T[code][1]}">🏆</div>
+      <h2>${T[code][1].toUpperCase()}</h2>
+      <p>CAMPEÃO DO MUNDO 2026</p>
+    </div>`);
 }
 
 function statusJogo(m, agora){
@@ -995,11 +1052,12 @@ function koJogoHTML(fx, ta){
   if (post) tag = '<span class="fim-tag">ENCERRADO</span>';
   else if (inplay) tag = `<span class="live-tag">● ${live.det || "AO VIVO"}</span>`;
   const sc = inplay || post;
-  const teamRow = (code, score, win) =>
-    `<div class="linha-time${win ? " ko-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="nome">${T[code][1]}</span>${score != null ? `<span class="ko-score">${score}</span>` : ""}</div>`;
+  const teamRow = (code, score, win, so) =>
+    `<div class="linha-time${win ? " ko-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="nome">${T[code][1]}</span>${score != null ? `<span class="ko-score">${score}${so != null ? `<i class="so">(${so})</i>` : ""}</span>` : ""}</div>`;
+  const temSO = live.soH || live.soA; // decidido nos pênaltis
   // resolve cada lado: time real se já definido, senão projeção/placeholder
-  const top = live.hc ? teamRow(live.hc, sc && typeof live.a === "number" ? live.a : null, post && live.win === "h") : `<div class="linha-time">${koLinha(fx.h, ta)}</div>`;
-  const bot = live.ac ? teamRow(live.ac, sc && typeof live.b === "number" ? live.b : null, post && live.win === "a") : `<div class="linha-time">${koLinha(fx.a, ta)}</div>`;
+  const top = live.hc ? teamRow(live.hc, sc && typeof live.a === "number" ? live.a : null, post && live.win === "h", temSO ? live.soH : null) : `<div class="linha-time">${koLinha(fx.h, ta)}</div>`;
+  const bot = live.ac ? teamRow(live.ac, sc && typeof live.b === "number" ? live.b : null, post && live.win === "a", temSO ? live.soA : null) : `<div class="linha-time">${koLinha(fx.a, ta)}</div>`;
   const id = fx.pos, st = live;
   const fim = post;
   return `<div class="jogo ko ${st.w ? "assistido" : ""} ${inplay ? "aovivo" : ""}" id="${id}">
@@ -1078,15 +1136,15 @@ function mmNome(code){ return MM_ABBR[code] || T[code][1]; }
 function mmSlotHTML(slot, ta){
   if (slot[0] === "1" || slot[0] === "2"){
     const code = ordemGrupo(slot[1])[slot[0] === "1" ? 0 : 1];
-    return `<span class="mm-team"><span class="mm-slot">${slot[0]}${slot[1]}</span><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span></span>`;
+    return `<span class="mm-team" onclick="selPath('${code}')"><span class="mm-slot">${slot[0]}${slot[1]}</span><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span></span>`;
   }
   const a = ta && ta[slot[1]];
-  if (a) return `<span class="mm-team"><span class="mm-slot">3º${a.L}</span><img src="https://flagcdn.com/w40/${T[a.code][0]}.png" alt=""><span class="mm-nm">${mmNome(a.code)}</span></span>`;
+  if (a) return `<span class="mm-team" onclick="selPath('${a.code}')"><span class="mm-slot">3º${a.L}</span><img src="https://flagcdn.com/w40/${T[a.code][0]}.png" alt=""><span class="mm-nm">${mmNome(a.code)}</span></span>`;
   return `<span class="mm-ph">3º ${slot[1]}</span>`;
 }
 function mmWinHTML(txt){ return `<span class="mm-ph">${txt}</span>`; }
-function mmRealTeam(code, score, win){
-  return `<span class="mm-team${win ? " mm-win" : ""}"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span>${score != null ? `<b class="mm-sc">${score}</b>` : ""}</span>`;
+function mmRealTeam(code, score, win, so){
+  return `<span class="mm-team${win ? " mm-win" : ""}" onclick="selPath('${code}')"><img src="https://flagcdn.com/w40/${T[code][0]}.png" alt=""><span class="mm-nm">${mmNome(code)}</span>${score != null ? `<b class="mm-sc">${score}${so != null ? `<i class="so">(${so})</i>` : ""}</b>` : ""}</span>`;
 }
 // usa dados ao vivo do mata-mata; resolve cada lado separadamente (1 time já definido
 // numa fase seguinte aparece mesmo com o adversário ainda indefinido)
@@ -1095,45 +1153,197 @@ function mmPair(pos, fallTop, fallBot){
   if (!live || (!live.hc && !live.ac)) return {top: fallTop, bot: fallBot, live: null};
   const post = live.state === "post";
   const sc = (live.state === "in" || post);
-  const top = live.hc ? mmRealTeam(live.hc, sc && typeof live.a === "number" ? live.a : null, post && live.win === "h") : fallTop;
-  const bot = live.ac ? mmRealTeam(live.ac, sc && typeof live.b === "number" ? live.b : null, post && live.win === "a") : fallBot;
+  const temSO = live.soH || live.soA; // decidido nos pênaltis
+  const top = live.hc ? mmRealTeam(live.hc, sc && typeof live.a === "number" ? live.a : null, post && live.win === "h", temSO ? live.soH : null) : fallTop;
+  const bot = live.ac ? mmRealTeam(live.ac, sc && typeof live.b === "number" ? live.b : null, post && live.win === "a", temSO ? live.soA : null) : fallBot;
   return {top, bot, live};
 }
-function mmCard(num, topHTML, botHTML, iso, live){
+function mmCard(num, topHTML, botHTML, iso, live, pos){
   const data = iso ? `<span class="mm-d">${koDataHora(iso)}</span>` : "";
   const badge = (live && live.state === "in") ? `<span class="mm-live">● ${live.det || "AO VIVO"}</span>` : "";
-  return `<div class="mm-match-wrap"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}${badge}${data}</div></div>`;
+  return `<div class="mm-match-wrap" data-mpos="${pos || ""}"><div class="mm-match"><span class="mm-n">${num}</span>${topHTML}${botHTML}${badge}${data}</div></div>`;
 }
 // ordem planar (igual à ESPN): cada par de confrontos alimenta o próximo, centralizado
 const ORD32 = [2,5,1,3,11,12,9,10,4,6,7,8,14,16,13,15];
 const ORD16 = [1,2,5,6,3,4,7,8];
 const ORDQF = [1,2,3,4];
 const ORDSF = [1,2];
+// ===== BOLÃO + CAMINHO DO TIME =====
+let pickMode = false;  // 🎯 modo palpite (bolão)
+let pathSel = null;    // ✨ time com caminho destacado
+// próxima partida e alimentadores de cada posição da chave
+const NEXT_POS = (() => {
+  const nx = {};
+  R16.forEach(m => m.f.forEach(n => nx["32_" + n] = "16_" + m.n));
+  QF.forEach(m => m.f.forEach(n => nx["16_" + n] = "QF_" + m.n));
+  SF.forEach(m => m.f.forEach(n => nx["QF_" + n] = "SF_" + m.n));
+  nx["SF_1"] = "FINAL"; nx["SF_2"] = "FINAL";
+  return nx;
+})();
+const FEED_POS = (() => {
+  const f = {};
+  R16.forEach(m => f["16_" + m.n] = m.f.map(n => "32_" + n));
+  QF.forEach(m => f["QF_" + m.n] = m.f.map(n => "16_" + n));
+  SF.forEach(m => f["SF_" + m.n] = m.f.map(n => "QF_" + n));
+  f["FINAL"] = ["SF_1", "SF_2"];
+  return f;
+})();
+function rotuloVenc(pos){
+  if (pos.slice(0,3) === "32_") return "Venc. 16-avos " + pos.slice(3);
+  if (pos.slice(0,3) === "16_") return "Venc. Oitavas " + pos.slice(3);
+  if (pos.slice(0,3) === "QF_") return "Venc. Quartas " + pos.slice(3);
+  if (pos.slice(0,3) === "SF_") return "Venc. Semi " + pos.slice(3);
+  return pos;
+}
+// quem avança de uma partida: resultado real ou, se não houver, o palpite
+function avancaDe(pos){
+  const live = store[pos] || {};
+  if (live.state === "post" && live.win) return {code: live.win === "h" ? live.hc : live.ac, real: true};
+  const pk = (store.__picks || {})[pos];
+  if (pk) return {code: pk, real: false};
+  return null;
+}
+// candidato de cada lado de uma partida (real > palpite propagado > rótulo)
+function candSide(pos, idx){
+  const live = store[pos] || {};
+  const code = idx === 0 ? live.hc : live.ac;
+  if (code) return {code, real: true};
+  const feed = FEED_POS[pos];
+  if (feed){
+    const adv = avancaDe(feed[idx]);
+    if (adv) return {code: adv.code, real: adv.real};
+    return {code: null, label: rotuloVenc(feed[idx])};
+  }
+  return {code: null, label: ""};
+}
+function fazerPalpite(pos, code){
+  const live = store[pos] || {};
+  if (live.state === "post") return; // já decidido: não dá mais pra palpitar
+  store.__picks = store.__picks || {};
+  if (store.__picks[pos] === code) delete store.__picks[pos]; // toque de novo desmarca
+  else store.__picks[pos] = code;
+  // invalida palpites rio-abaixo que ficaram impossíveis
+  let cur = NEXT_POS[pos];
+  while (cur){
+    const pk = store.__picks[cur];
+    if (pk){
+      const c0 = candSide(cur, 0), c1 = candSide(cur, 1);
+      if (pk !== c0.code && pk !== c1.code) delete store.__picks[cur];
+    }
+    cur = NEXT_POS[cur];
+  }
+  save(); atualizaShareBtn(); renderMata();
+}
+// lado de uma partida no modo palpite
+function pickSideHTML(pos, idx){
+  const live = store[pos] || {};
+  const cand = candSide(pos, idx);
+  if (!cand.code) return `<span class="mm-ph">${cand.label}</span>`;
+  const picks = store.__picks || {};
+  const flag = `<img src="https://flagcdn.com/w40/${T[cand.code][0]}.png" alt="">`;
+  if (live.state === "post"){ // decidido: mostra resultado + acerto/erro do palpite
+    const winCode = live.win === "h" ? live.hc : live.ac;
+    const win = cand.code === winCode;
+    const sc = idx === 0 ? live.a : live.b;
+    const so = (live.soH || live.soA) ? (idx === 0 ? live.soH : live.soA) : null;
+    const mark = picks[pos] === cand.code ? (win ? '<b class="pk-hit">✓</b>' : '<b class="pk-miss">✗</b>') : "";
+    return `<span class="mm-team${win ? " mm-win" : ""}">${flag}<span class="mm-nm">${mmNome(cand.code)}</span>${mark}${typeof sc === "number" ? `<b class="mm-sc">${sc}${so != null ? `<i class="so">(${so})</i>` : ""}</b>` : ""}</span>`;
+  }
+  const sel = picks[pos] === cand.code;
+  return `<span class="mm-team pickable${sel ? " pick-sel" : ""}${cand.real ? "" : " pick-proj"}" onclick="fazerPalpite('${pos}','${cand.code}')">${flag}<span class="mm-nm">${mmNome(cand.code)}</span>${sel ? '<b class="pk-dot">🎯</b>' : ""}</span>`;
+}
+function togglePick(){
+  pickMode = !pickMode;
+  pathSel = null;
+  document.getElementById("btnPick").textContent = pickMode ? "👁 Ver chaveamento oficial" : "🎯 Fazer meu palpite";
+  document.getElementById("pickHint").style.display = pickMode ? "block" : "none";
+  atualizaShareBtn(); renderMata();
+}
+function atualizaShareBtn(){
+  const b = document.getElementById("btnSharePick");
+  if (b) b.style.display = (pickMode && Object.keys(store.__picks || {}).length) ? "" : "none";
+}
+function sharePick(){
+  const picks = store.__picks || {};
+  const nomeDe = c => c && T[c] ? T[c][1] : "?";
+  let txt = "🎯 MEU PALPITE — COPA 2026\n";
+  if (picks["FINAL"]) txt += `🏆 Campeão: ${nomeDe(picks["FINAL"])}\n`;
+  const f1 = avancaDe("SF_1"), f2 = avancaDe("SF_2");
+  if (f1 || f2) txt += `🥇 Final: ${nomeDe(f1 && f1.code)} × ${nomeDe(f2 && f2.code)}\n`;
+  let certos = 0, decid = 0;
+  for (const pos in picks){
+    const live = store[pos] || {};
+    if (live.state === "post" && live.win){ decid++; if (picks[pos] === (live.win === "h" ? live.hc : live.ac)) certos++; }
+  }
+  if (decid) txt += `✅ Acertos até agora: ${certos}/${decid}\n`;
+  txt += "👉 faça o seu: tinyurl.com/copa2026aovivo";
+  if (navigator.share){ navigator.share({text: txt}).catch(()=>{}); }
+  else window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank");
+}
+// ✨ caminho do time: destaca a rota da seleção até a final
+function selPath(code){
+  if (pickMode) return;
+  pathSel = pathSel === code ? null : code;
+  aplicaPath();
+}
+function aplicaPath(){
+  const wraps = document.querySelectorAll("#mataBracket .mm-match-wrap");
+  if (!pathSel){ wraps.forEach(w => w.classList.remove("mm-path", "mm-dimmed")); return; }
+  let n32 = null;
+  R32.forEach(m => { const lv = store["32_" + m.n] || {}; if (lv.hc === pathSel || lv.ac === pathSel) n32 = m.n; });
+  if (n32 == null){ pathSel = null; wraps.forEach(w => w.classList.remove("mm-path", "mm-dimmed")); return; }
+  const chain = new Set(["32_" + n32]);
+  let cur = NEXT_POS["32_" + n32];
+  while (cur){ chain.add(cur); cur = NEXT_POS[cur]; }
+  wraps.forEach(w => {
+    const p = w.dataset.mpos;
+    w.classList.toggle("mm-path", chain.has(p));
+    w.classList.toggle("mm-dimmed", !chain.has(p));
+  });
+}
 function renderMata(){
   const el = document.getElementById("mataBracket");
   const byN = a => { const o = {}; a.forEach(x => o[x.n] = x); return o; };
   const m32 = byN(R32), m16 = byN(R16), mqf = byN(QF), msf = byN(SF);
   const ta = assignThirds();
-  const c32 = ORD32.map(n => { const m = m32[n]; const p = mmPair("32_"+n, mmSlotHTML(m.h, ta), mmSlotHTML(m.a, ta)); return mmCard("16-avos " + n, p.top, p.bot, D32[n], p.live); }).join("");
-  const c16 = ORD16.map(n => { const m = m16[n]; const p = mmPair("16_"+n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1])); return mmCard("Oitavas " + n, p.top, p.bot, D16[n], p.live); }).join("");
-  const cqf = ORDQF.map(n => { const m = mqf[n]; const p = mmPair("QF_"+n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1])); return mmCard("Quartas " + n, p.top, p.bot, DQF[n], p.live); }).join("");
-  const csf = ORDSF.map(n => { const m = msf[n]; const p = mmPair("SF_"+n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1])); return mmCard("Semi " + n, p.top, p.bot, DSF[n], p.live); }).join("");
-  const pf = mmPair("FINAL", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"));
-  const cf  = mmCard("🏆 Final", pf.top, pf.bot, DFINAL, pf.live);
+  // monta um confronto no modo atual (palpite ou oficial)
+  const mk = (pos, num, fallTop, fallBot, iso) => {
+    if (pickMode) return mmCard(num, pickSideHTML(pos, 0), pickSideHTML(pos, 1), iso, null, pos);
+    const p = mmPair(pos, fallTop, fallBot);
+    return mmCard(num, p.top, p.bot, iso, p.live, pos);
+  };
+  const c32 = ORD32.map(n => { const m = m32[n]; return mk("32_" + n, "16-avos " + n, mmSlotHTML(m.h, ta), mmSlotHTML(m.a, ta), D32[n]); }).join("");
+  const c16 = ORD16.map(n => { const m = m16[n]; return mk("16_" + n, "Oitavas " + n, mmWinHTML("Venc. 16-avos " + m.f[0]), mmWinHTML("Venc. 16-avos " + m.f[1]), D16[n]); }).join("");
+  const cqf = ORDQF.map(n => { const m = mqf[n]; return mk("QF_" + n, "Quartas " + n, mmWinHTML("Venc. Oitavas " + m.f[0]), mmWinHTML("Venc. Oitavas " + m.f[1]), DQF[n]); }).join("");
+  const csf = ORDSF.map(n => { const m = msf[n]; return mk("SF_" + n, "Semi " + n, mmWinHTML("Venc. Quartas " + m.f[0]), mmWinHTML("Venc. Quartas " + m.f[1]), DSF[n]); }).join("");
+  const cf  = mk("FINAL", "🏆 Final", mmWinHTML("Venc. Semi 1"), mmWinHTML("Venc. Semi 2"), DFINAL);
   const round = (titulo, html) => `<div class="mm-round"><h4>${titulo}</h4><div class="mm-round-body">${html}</div></div>`;
   el.innerHTML = round("16-avos", c32) + round("Oitavas", c16) + round("Quartas", cqf) + round("Semis", csf) + round("Final", cf);
-  // 3º lugar fora da árvore
+  // 3º lugar fora da árvore (sem palpite)
+  const p3 = mmPair("3RD", mmWinHTML("Perdedor Semi 1"), mmWinHTML("Perdedor Semi 2"));
   el.insertAdjacentHTML("beforeend",
-    `<div class="mm-round"><h4>3º lugar</h4><div class="mm-third">${('<div class="mm-match"><span class="mm-n">3º lugar</span>' + mmWinHTML("Perdedor Semi 1") + mmWinHTML("Perdedor Semi 2") + '<span class="mm-d">' + koDataHora(D3RD) + '</span></div>')}</div></div>`);
+    `<div class="mm-round"><h4>3º lugar</h4><div class="mm-third">${('<div class="mm-match"><span class="mm-n">3º lugar</span>' + p3.top + p3.bot + '<span class="mm-d">' + koDataHora(D3RD) + '</span></div>')}</div></div>`);
+  aplicaPath();
+  atualizaShareBtn();
 }
 
 // ===== ABA STATS =====
+let statsViewMode = "all"; // "all" (torneio inteiro) | "ko" (só mata-mata)
+function statsView(v){
+  statsViewMode = v;
+  document.getElementById("swAll").classList.toggle("on", v === "all");
+  document.getElementById("swKO").classList.toggle("on", v === "ko");
+  renderStats();
+}
 function renderStats(){
   const grid = document.getElementById("statsGrid");
-  const s = store.__stats;
+  const koView = statsViewMode === "ko";
+  const s = koView ? store.__statsKO : store.__stats;
   const temDados = s && (s.golsTot || s.cartTot || s.jogos || Object.keys(s.gols || {}).length);
   if (!temDados){
-    grid.innerHTML = '<p class="vazio">Ainda sem estatísticas — elas aparecem aqui conforme os jogos acontecem. ⏳</p>';
+    grid.innerHTML = koView
+      ? '<p class="vazio">As estatísticas do mata-mata aparecem aqui conforme os jogos eliminatórios acontecem. ⏳</p>'
+      : '<p class="vazio">Ainda sem estatísticas — elas aparecem aqui conforme os jogos acontecem. ⏳</p>';
     return;
   }
   const flagImg = code => code && T[code] ? `<img src="https://flagcdn.com/w40/${T[code][0]}.png" alt="">` : "";
@@ -1150,7 +1360,7 @@ function renderStats(){
   const avg = (n, d) => d ? (n / d).toFixed(1).replace(".", ",") : "–";
   const pct = (n, d) => d ? Math.round(n / d * 100) + "%" : "–";
   const media = jogos ? (s.golsPost / jogos).toFixed(2).replace(".", ",") : "–";
-  const painel = `<div class="grupo painel"><h3>📈 Torneio</h3>
+  const painel = `<div class="grupo painel"><h3>${koView ? "🗝️ Mata-mata" : "📈 Torneio"}</h3>
     <div class="painel-grid">
       <div class="kpi"><b>${jogos}</b><span>jogos</span></div>
       <div class="kpi"><b>${s.golsTot}</b><span>gols</span></div>
@@ -1158,7 +1368,7 @@ function renderStats(){
       <div class="kpi"><b>${s.cartTot}</b><span>cartões</span></div>
       <div class="kpi"><b>${avg(s.cartTot, jogos)}</b><span>cartões/jogo</span></div>
       <div class="kpi"><b>${avg(s.shotsTot || 0, jogos)}</b><span>finaliz./jogo</span></div>
-      <div class="kpi"><b>${pct(s.empates || 0, jogos)}</b><span>empates</span></div>
+      <div class="kpi"><b>${pct(s.empates || 0, jogos)}</b><span>${koView ? "foi p/ pênaltis" : "empates"}</span></div>
       <div class="kpi"><b>${pct(s.comGol || 0, jogos)}</b><span>jogos c/ gol</span></div>
     </div></div>`;
 
@@ -1531,8 +1741,96 @@ function compStat(comp, abbr){
   const s = comp.statistics.find(x => x.abbreviation === abbr);
   return s ? (parseFloat(s.displayValue) || 0) : 0;
 }
-// busca placar/times/status dos jogos do mata-mata (ao vivo) e guarda por posição
-async function atualizarKO(){
+// agregado de estatísticas vazio
+function novoAgg(){
+  return {
+    gols:{}, ama:{}, ver:{}, sel:{}, assist:{},
+    sofridos:{}, jogosSel:{}, cartSel:{}, pen:{},
+    rapidos:[], multi:[], contra:[], goleadas:[], maisGols:[],
+    faixas:[0,0,0,0,0,0,0], tipos:{}, jogos:0, golsTot:0, golsPost:0, cartTot:0,
+    shotsTot:0, empates:0, comGol:0
+  };
+}
+// processa as estatísticas de UM evento e soma em todos os agregados de `aggs`
+function statsEvent(ev, ch, ca, aggs, precisaSumula){
+  const c = ev.competitions && ev.competitions[0];
+  if (!c) return;
+  const home = c.competitors.find(x => x.homeAway === "home");
+  const away = c.competitors.find(x => x.homeAway === "away");
+  const state = ev.status && ev.status.type ? ev.status.type.state : null;
+  if (state !== "in" && state !== "post") return; // só jogos iniciados/encerrados
+  const sH = Number(home.score), sA = Number(away.score);
+  const addP = (obj, nome, code) => { const k = nome + "|" + (code || ""); obj[k] = (obj[k] || 0) + 1; };
+  const addPen = (agg, nome, code, ok) => { const k = nome + "|" + (code || ""); const o = agg.pen[k] = agg.pen[k] || {c:0, p:0}; if (ok) o.c++; else o.p++; };
+  const idMap = {};
+  if (home.team) idMap[String(home.team.id)] = ch;
+  if (away.team) idMap[String(away.team.id)] = ca;
+  const golMap = {};   // artilheiro -> seleção (pra casar assistências da súmula)
+  const porJog = {};   // gols deste jogo por jogador
+  const lblJogo = `${nomeMsg(ch)} × ${nomeMsg(ca)}`;
+  const lblPlacar = `${nomeMsg(ch)} ${isNaN(sH) ? "" : sH}x${isNaN(sA) ? "" : sA} ${nomeMsg(ca)}`;
+  (c.details || []).forEach(l => {
+    const ath = (l.athletesInvolved || [])[0];
+    const nome = ath ? ath.displayName : null;
+    const tcode = idMap[String(((ath && ath.team) || l.team || {}).id)];
+    const gcode = idMap[String((l.team || {}).id)];
+    const minTxt = (l.clock && l.clock.displayValue) || "";
+    const min = parseInt(minTxt) || Math.round(((l.clock && l.clock.value) || 0) / 60);
+    if (l.scoringPlay && !l.shootout){
+      const tt = (l.type && l.type.text) || "";
+      const tipo = l.ownGoal ? "Contra" : l.penaltyKick ? "Pênalti"
+        : /header/i.test(tt) ? "Cabeça" : /volley/i.test(tt) ? "Voleio"
+        : /free.?kick/i.test(tt) ? "Falta" : "Normal";
+      const aposNoventa = min > 90 || /90'?\+/.test(minTxt); // acréscimos/prorrogação
+      const fi = aposNoventa ? 6 : min <= 15 ? 0 : min <= 30 ? 1 : min <= 45 ? 2 : min <= 60 ? 3 : min <= 75 ? 4 : 5;
+      aggs.forEach(agg => {
+        agg.golsTot++;
+        if (gcode) agg.sel[gcode] = (agg.sel[gcode] || 0) + 1;
+        agg.tipos[tipo] = (agg.tipos[tipo] || 0) + 1;
+        agg.faixas[fi]++;
+        if (nome && !l.ownGoal){
+          addP(agg.gols, nome, tcode);
+          if (l.penaltyKick) addPen(agg, nome, tcode, true);
+          agg.rapidos.push({v: min, min: minTxt || min + "'", nome, code: tcode, jogo: lblJogo});
+        }
+        if (nome && l.ownGoal) agg.contra.push({nome, code: tcode, jogo: lblJogo});
+      });
+      if (nome && !l.ownGoal){ golMap[nome] = tcode; porJog[nome] = (porJog[nome] || 0) + 1; }
+    }
+    if (l.penaltyKick && !l.scoringPlay && !l.shootout && nome) aggs.forEach(agg => addPen(agg, nome, tcode, false));
+    if (l.yellowCard) aggs.forEach(agg => {
+      agg.cartTot++;
+      if (nome) addP(agg.ama, nome, tcode);
+      if (tcode){ const cs = agg.cartSel[tcode] = agg.cartSel[tcode] || {a:0, v:0}; cs.a++; }
+    });
+    if (l.redCard) aggs.forEach(agg => {
+      agg.cartTot++;
+      if (nome) addP(agg.ver, nome, tcode);
+      if (tcode){ const cs = agg.cartSel[tcode] = agg.cartSel[tcode] || {a:0, v:0}; cs.v++; }
+    });
+  });
+  if (state === "post" && !isNaN(sH) && !isNaN(sA)){
+    aggs.forEach(agg => {
+      agg.jogos++;
+      agg.golsPost += sH + sA;
+      if (sH === sA) agg.empates++;
+      if (sH + sA >= 1) agg.comGol++;
+      agg.shotsTot += compStat(home, "SHOT") + compStat(away, "SHOT");
+      agg.sofridos[ch] = (agg.sofridos[ch] || 0) + sA;
+      agg.sofridos[ca] = (agg.sofridos[ca] || 0) + sH;
+      agg.jogosSel[ch] = (agg.jogosSel[ch] || 0) + 1;
+      agg.jogosSel[ca] = (agg.jogosSel[ca] || 0) + 1;
+      if (Math.abs(sH - sA) >= 2) agg.goleadas.push({lbl: lblPlacar, v: Math.abs(sH - sA)});
+      if (sH + sA >= 1) agg.maisGols.push({lbl: lblPlacar, v: sH + sA});
+      for (const n in porJog) if (porJog[n] >= 2) agg.multi.push({nome: n, code: golMap[n], n: porJog[n], jogo: lblPlacar});
+    });
+  }
+  // súmula (assistências): busca se ainda não tem versão final em cache
+  const cache = (store.__sum || {})[ev.id];
+  if (!(cache && cache.f)) precisaSumula.push({id: ev.id, golMap, final: state === "post"});
+}
+// busca placar/times/status dos jogos do mata-mata e soma as stats deles
+async function atualizarKO(aggAll, aggKO, precisaSumula){
   try {
     const r = await fetch(KO_URL);
     if (!r.ok) return;
@@ -1557,7 +1855,12 @@ async function atualizarKO(){
         if (!isNaN(a)) rec.a = a;
         if (!isNaN(b)) rec.b = b;
         rec.win = home.winner ? "h" : (away.winner ? "a" : null); // inclui decisão por pênaltis
+        // placar da disputa de pênaltis (quando houve)
+        const soH = Number(home.shootoutScore || 0), soA = Number(away.shootoutScore || 0);
+        if (soH || soA){ rec.soH = soH; rec.soA = soA; } else { delete rec.soH; delete rec.soA; }
       }
+      // stats do jogo: soma no geral E no agregado só-mata-mata
+      if (aggAll && rec.hc && rec.ac) statsEvent(ev, rec.hc, rec.ac, [aggAll, aggKO], precisaSumula);
     });
   } catch(e){}
 }
@@ -1567,15 +1870,7 @@ async function atualizar(){
     if (!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     let hits = 0;
-    const agg = {
-      gols:{}, ama:{}, ver:{}, sel:{}, assist:{},
-      sofridos:{}, jogosSel:{}, cartSel:{}, pen:{},
-      rapidos:[], multi:[], contra:[], goleadas:[], maisGols:[],
-      faixas:[0,0,0,0,0,0,0], tipos:{}, jogos:0, golsTot:0, golsPost:0, cartTot:0,
-      shotsTot:0, empates:0, comGol:0
-    };
-    const addP = (obj, nome, code) => { const k = nome + "|" + (code || ""); obj[k] = (obj[k] || 0) + 1; };
-    const addPen = (nome, code, ok) => { const k = nome + "|" + (code || ""); const o = agg.pen[k] = agg.pen[k] || {c:0, p:0}; if (ok) o.c++; else o.p++; };
+    const aggAll = novoAgg(), aggKO = novoAgg();
     const precisaSumula = [];
     (j.events || []).forEach(ev => {
       const c = ev.competitions && ev.competitions[0];
@@ -1602,73 +1897,10 @@ async function atualizar(){
       st.eid = ev.id;
       if (c.venue){ st.vn = c.venue.fullName; st.vc = (c.venue.address && c.venue.address.city) || ""; }
       hits++;
-      if (!rolouOuRolando) return; // estatísticas só de jogos iniciados/encerrados
-      // ----- estatísticas lance a lance -----
-      const idMap = {};
-      if (home.team) idMap[String(home.team.id)] = ch;
-      if (away.team) idMap[String(away.team.id)] = ca;
-      const golMap = {};   // artilheiro -> seleção (pra casar assistências da súmula)
-      const porJog = {};   // gols deste jogo por jogador
-      const lblJogo = `${nomeMsg(ch)} × ${nomeMsg(ca)}`;
-      const lblPlacar = `${nomeMsg(ch)} ${isNaN(sH) ? "" : sH}x${isNaN(sA) ? "" : sA} ${nomeMsg(ca)}`;
-      (c.details || []).forEach(l => {
-        const ath = (l.athletesInvolved || [])[0];
-        const nome = ath ? ath.displayName : null;
-        const tcode = idMap[String(((ath && ath.team) || l.team || {}).id)];
-        const gcode = idMap[String((l.team || {}).id)];
-        const minTxt = (l.clock && l.clock.displayValue) || "";
-        const min = parseInt(minTxt) || Math.round(((l.clock && l.clock.value) || 0) / 60);
-        if (l.scoringPlay && !l.shootout){
-          agg.golsTot++;
-          if (gcode) agg.sel[gcode] = (agg.sel[gcode] || 0) + 1;
-          // tipo do gol (para o breakdown)
-          const tt = (l.type && l.type.text) || "";
-          const tipo = l.ownGoal ? "Contra" : l.penaltyKick ? "Pênalti"
-            : /header/i.test(tt) ? "Cabeça" : /volley/i.test(tt) ? "Voleio"
-            : /free.?kick/i.test(tt) ? "Falta" : "Normal";
-          agg.tipos[tipo] = (agg.tipos[tipo] || 0) + 1;
-          const aposNoventa = min > 90 || /90'?\+/.test(minTxt); // acréscimos do 2º tempo (90'+X')
-          agg.faixas[aposNoventa ? 6 : min <= 15 ? 0 : min <= 30 ? 1 : min <= 45 ? 2 : min <= 60 ? 3 : min <= 75 ? 4 : 5]++;
-          if (nome && !l.ownGoal){
-            addP(agg.gols, nome, tcode);
-            golMap[nome] = tcode;
-            porJog[nome] = (porJog[nome] || 0) + 1;
-            if (l.penaltyKick) addPen(nome, tcode, true);
-            agg.rapidos.push({v: min, min: minTxt || min + "'", nome, code: tcode, jogo: lblJogo});
-          }
-          if (nome && l.ownGoal) agg.contra.push({nome, code: tcode, jogo: lblJogo});
-        }
-        if (l.penaltyKick && !l.scoringPlay && !l.shootout && nome) addPen(nome, tcode, false);
-        if (l.yellowCard){
-          agg.cartTot++;
-          if (nome) addP(agg.ama, nome, tcode);
-          if (tcode){ const cs = agg.cartSel[tcode] = agg.cartSel[tcode] || {a:0, v:0}; cs.a++; }
-        }
-        if (l.redCard){
-          agg.cartTot++;
-          if (nome) addP(agg.ver, nome, tcode);
-          if (tcode){ const cs = agg.cartSel[tcode] = agg.cartSel[tcode] || {a:0, v:0}; cs.v++; }
-        }
-      });
-      // ----- estatísticas por jogo encerrado -----
-      if (state === "post" && !isNaN(sH) && !isNaN(sA)){
-        agg.jogos++;
-        agg.golsPost += sH + sA;
-        if (sH === sA) agg.empates++;
-        if (sH + sA >= 1) agg.comGol++;
-        agg.shotsTot += compStat(home, "SHOT") + compStat(away, "SHOT");
-        agg.sofridos[ch] = (agg.sofridos[ch] || 0) + sA;
-        agg.sofridos[ca] = (agg.sofridos[ca] || 0) + sH;
-        agg.jogosSel[ch] = (agg.jogosSel[ch] || 0) + 1;
-        agg.jogosSel[ca] = (agg.jogosSel[ca] || 0) + 1;
-        if (Math.abs(sH - sA) >= 2) agg.goleadas.push({lbl: lblPlacar, v: Math.abs(sH - sA)});
-        if (sH + sA >= 1) agg.maisGols.push({lbl: lblPlacar, v: sH + sA});
-        for (const n in porJog) if (porJog[n] >= 2) agg.multi.push({nome: n, code: golMap[n], n: porJog[n], jogo: lblPlacar});
-      }
-      // ----- súmula (assistências): busca se ainda não tem versão final em cache -----
-      const cache = (store.__sum || {})[ev.id];
-      if (!(cache && cache.f)) precisaSumula.push({id: ev.id, golMap, final: state === "post"});
+      statsEvent(ev, ch, ca, [aggAll], precisaSumula);
     });
+    // mata-mata: placares/times/pênaltis + stats (somadas no geral E no agregado próprio)
+    await atualizarKO(aggAll, aggKO, precisaSumula);
     // busca até 20 súmulas por ciclo (encerradas ficam em cache pra sempre)
     store.__sum = store.__sum || {};
     await Promise.all(precisaSumula.slice(0, 20).map(async x => {
@@ -1687,9 +1919,13 @@ async function atualizar(){
         store.__sum[x.id] = {f: x.final ? 1 : 0, a: asts};
       } catch(e){}
     }));
-    for (const k in store.__sum) (store.__sum[k].a || []).forEach(p => { const kk = p[0] + "|" + (p[1] || ""); agg.assist[kk] = (agg.assist[kk] || 0) + 1; });
-    store.__stats = agg;
-    await atualizarKO(); // placar ao vivo do mata-mata
+    for (const k in store.__sum) (store.__sum[k].a || []).forEach(p => {
+      const kk = p[0] + "|" + (p[1] || "");
+      aggAll.assist[kk] = (aggAll.assist[kk] || 0) + 1;
+      if (KO_ID[k]) aggKO.assist[kk] = (aggKO.assist[kk] || 0) + 1; // súmula de jogo do mata-mata
+    });
+    store.__stats = aggAll;
+    store.__statsKO = aggKO;
     store.__updatedAt = Date.now();
     save(); render(); renderGrupos(); renderStats();
   } catch(e){
@@ -1784,7 +2020,7 @@ function textoHoje(){
     const live = store[fx.pos];
     const h = (live && live.hc) ? nomeMsgKO(live.hc) : koNomeSlot(fx.h, ta);
     const w = (live && live.ac) ? nomeMsgKO(live.ac) : koNomeSlot(fx.a, ta);
-    items.push({dt, state: live && live.state, a: live && live.a, b: live && live.b, h, w, extra: fx.round});
+    items.push({dt, state: live && live.state, a: live && live.a, b: live && live.b, soH: live && live.soH, soA: live && live.soA, h, w, extra: fx.round});
   });
   if (!items.length) return "Hoje não tem jogo. 😢";
   items.sort((x, y) => x.dt - y.dt);
@@ -1794,7 +2030,8 @@ function textoHoje(){
     const fimJanela = agora > new Date(it.dt.getTime() + DUR_MS);
     const fim = it.state === "post" || (!it.state && temPlacar && fimJanela);
     const vivo = it.state === "in" || (!it.state && agora >= it.dt && !fimJanela);
-    if (fim && temPlacar) txt += `🏁 ${it.h} ${it.a}x${it.b} ${it.w}\n`;
+    const so = (it.soH || it.soA) ? ` (${it.soH}-${it.soA} pên)` : "";
+    if (fim && temPlacar) txt += `🏁 ${it.h} ${it.a}x${it.b} ${it.w}${so}\n`;
     else if (vivo && temPlacar) txt += `🔴 ${it.h} ${it.a}x${it.b} ${it.w}\n`;
     else if (vivo) txt += `🔴 ${it.h} × ${it.w} (ao vivo)\n`;
     else txt += `🕐 ${horaLocal(it.dt).replace("h00","h")} ${it.h} × ${it.w}. ${it.extra}\n`;
